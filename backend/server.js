@@ -90,6 +90,130 @@ app.use(
     })
 );
 
+/* =====================================================
+   TEMPORARY ADMIN PASSWORD RESET
+   REMOVE THIS SECTION AFTER USE
+   ===================================================== */
+
+app.post(
+    "/api/temp-admin-reset",
+    async function (req, res) {
+
+        try {
+
+            const resetSecret =
+                String(req.headers["x-reset-secret"] || "").trim();
+
+            const expectedSecret =
+                String(process.env.ADMIN_RESET_SECRET || "").trim();
+
+            if (
+                !expectedSecret ||
+                resetSecret !== expectedSecret
+            ) {
+
+                return res.status(403).json({
+                    message: "Unauthorized."
+                });
+
+            }
+
+            const grNumber =
+                String(req.body.grNumber || "").trim();
+
+            const newPassword =
+                String(req.body.newPassword || "");
+
+            if (!grNumber || !newPassword) {
+
+                return res.status(400).json({
+                    message:
+                        "GR number and new password are required."
+                });
+
+            }
+
+            if (newPassword.length < 6) {
+
+                return res.status(400).json({
+                    message:
+                        "Password must be at least 6 characters."
+                });
+
+            }
+
+            const hashedPassword =
+                await bcrypt.hash(
+                    newPassword,
+                    10
+                );
+
+            db.run(
+                `
+                UPDATE members
+                SET password = ?
+                WHERE gr_number = ?
+                `,
+                [
+                    hashedPassword,
+                    grNumber
+                ],
+                function (error) {
+
+                    if (error) {
+
+                        console.error(
+                            "Temporary admin reset error:",
+                            error
+                        );
+
+                        return res.status(500).json({
+                            message:
+                                "Database error."
+                        });
+
+                    }
+
+                    if (this.changes === 0) {
+
+                        return res.status(404).json({
+                            message:
+                                "Member not found."
+                        });
+
+                    }
+
+                    console.log(
+                        "Temporary password reset used for:",
+                        grNumber
+                    );
+
+                    return res.status(200).json({
+                        message:
+                            "Password reset successfully."
+                    });
+
+                }
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Temporary admin reset error:",
+                error
+            );
+
+            return res.status(500).json({
+                message:
+                    "Unable to reset password."
+            });
+
+        }
+
+    }
+);
 
 /* =====================================================
    FRONTEND
