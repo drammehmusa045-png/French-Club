@@ -92,6 +92,7 @@ app.use(
     })
 );
 
+
 /* =====================================================
    TEMPORARY ADMIN PASSWORD RESET
    REMOVE THIS SECTION AFTER USE
@@ -150,23 +151,20 @@ app.post(
                     10
                 );
 
-            db.run(
+            db.get(
                 `
-                UPDATE members
-                SET password = ?
+                SELECT id
+                FROM members
                 WHERE gr_number = ?
                 `,
-                [
-                    hashedPassword,
-                    grNumber
-                ],
-                function (error) {
+                [grNumber],
+                function (findError, member) {
 
-                    if (error) {
+                    if (findError) {
 
                         console.error(
-                            "Temporary admin reset error:",
-                            error
+                            "Temporary admin reset lookup error:",
+                            findError
                         );
 
                         return res.status(500).json({
@@ -176,24 +174,112 @@ app.post(
 
                     }
 
-                    if (this.changes === 0) {
+                    /* EXISTING MEMBER */
 
-                        return res.status(404).json({
-                            message:
-                                "Member not found."
-                        });
+                    if (member) {
 
+                        db.run(
+                            `
+                            UPDATE members
+                            SET
+                                password = ?,
+                                role = 'admin',
+                                status = 'Active'
+                            WHERE gr_number = ?
+                            `,
+                            [
+                                hashedPassword,
+                                grNumber
+                            ],
+                            function (updateError) {
+
+                                if (updateError) {
+
+                                    console.error(
+                                        "Temporary admin update error:",
+                                        updateError
+                                    );
+
+                                    return res.status(500).json({
+                                        message:
+                                            "Database error."
+                                    });
+
+                                }
+
+                                console.log(
+                                    "Admin password reset for:",
+                                    grNumber
+                                );
+
+                                return res.status(200).json({
+                                    message:
+                                        "Admin password reset successfully."
+                                });
+
+                            }
+                        );
+
+                        return;
                     }
 
-                    console.log(
-                        "Temporary password reset used for:",
-                        grNumber
-                    );
+                    /* CREATE ADMIN IF MISSING */
 
-                    return res.status(200).json({
-                        message:
-                            "Password reset successfully."
-                    });
+                    db.run(
+                        `
+                        INSERT INTO members
+                        (
+                            name,
+                            gr_number,
+                            class_name,
+                            phone,
+                            email,
+                            password,
+                            date_joined,
+                            status,
+                            role
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        `,
+                        [
+                            "French Club Administrator",
+                            grNumber,
+                            "Executive",
+                            "N/A",
+                            null,
+                            hashedPassword,
+                            new Date().toISOString(),
+                            "Active",
+                            "admin"
+                        ],
+                        function (insertError) {
+
+                            if (insertError) {
+
+                                console.error(
+                                    "Temporary admin creation error:",
+                                    insertError
+                                );
+
+                                return res.status(500).json({
+                                    message:
+                                        "Unable to create admin account."
+                                });
+
+                            }
+
+                            console.log(
+                                "Temporary admin account created:",
+                                grNumber
+                            );
+
+                            return res.status(200).json({
+                                message:
+                                    "Admin account created and password set successfully."
+                            });
+
+                        }
+                    );
 
                 }
             );
@@ -209,7 +295,7 @@ app.post(
 
             return res.status(500).json({
                 message:
-                    "Unable to reset password."
+                    "Server error."
             });
 
         }
