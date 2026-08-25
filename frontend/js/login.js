@@ -1,6 +1,6 @@
 /* =========================================
    FRENCH CLUB
-   MEMBER LOGIN
+   MEMBER / ADMIN LOGIN
    ========================================= */
 
 const loginForm = document.getElementById("loginForm");
@@ -28,8 +28,11 @@ loginForm.addEventListener("submit", async function (event) {
     }
 
 
-    loginMessage.textContent = "Logging in...";
-    loginMessage.style.color = "blue";
+    loginMessage.textContent =
+        "Logging in...";
+
+    loginMessage.style.color =
+        "blue";
 
 
     try {
@@ -51,21 +54,26 @@ loginForm.addEventListener("submit", async function (event) {
         );
 
 
-        const data = await response.json();
+        const data =
+            await response.json();
 
 
         if (!response.ok) {
 
             loginMessage.textContent =
-                data.message || "Login failed.";
+                data.message ||
+                "Login failed.";
 
-            loginMessage.style.color = "red";
+            loginMessage.style.color =
+                "red";
 
             return;
         }
 
 
-        /* SAVE MEMBER INFORMATION */
+        /* =====================================
+           SAVE MEMBER INFORMATION
+           ===================================== */
 
         localStorage.setItem(
             "frenchClubMember",
@@ -73,20 +81,51 @@ loginForm.addEventListener("submit", async function (event) {
         );
 
 
+        /* =====================================
+           SAVE ROLE
+           ===================================== */
+
+        const role =
+            String(
+                data.role ||
+                data.member?.role ||
+                "member"
+            ).toLowerCase();
+
+
+        localStorage.setItem(
+            "frenchClubRole",
+            role
+        );
+
+
         loginMessage.textContent =
             "Login successful! Redirecting...";
 
-        loginMessage.style.color = "green";
+        loginMessage.style.color =
+            "green";
 
 
-        /* REDIRECT */
+        /* =====================================
+           ROLE-BASED REDIRECT
+           ===================================== */
 
         setTimeout(function () {
 
-            window.location.href =
-                "/member-dashboard.html";
+            if (role === "admin") {
 
-        }, 500);
+                window.location.href =
+                    "/admin-dashboard.html";
+
+            }
+            else {
+
+                window.location.href =
+                    "/member-dashboard.html";
+
+            }
+
+        }, 300);
 
 
     } catch (error) {
@@ -99,7 +138,8 @@ loginForm.addEventListener("submit", async function (event) {
         loginMessage.textContent =
             "Unable to connect to the server. Please try again.";
 
-        loginMessage.style.color = "red";
+        loginMessage.style.color =
+            "red";
 
     }
 
