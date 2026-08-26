@@ -25,9 +25,10 @@ console.log("MEMBER DASHBOARD JS LOADED");
     }
 
     if (memberData.role && memberData.role !== "member") {
-        window.location.href = "admin-dashboard.html";
-        return;
-    }
+    alert("Admin accounts cannot access the member dashboard.");
+    window.location.href = "login.html";
+    return;
+}
 
     setText("memberName", memberData.name || "Member");
     setText("myName", memberData.name || "-");
