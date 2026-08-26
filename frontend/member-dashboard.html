@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>My Dashboard - French Club</title>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<header class="header">
+
+    <div class="logo">
+        🇫🇷 French Club
+    </div>
+
+    <nav>
+
+        <a href="index.html">
+            Home
+        </a>
+
+        <a href="#" id="memberLogout">
+            Logout
+        </a>
+
+    </nav>
+
+</header>
+
+
+<main class="dashboard-page">
+
+
+    <!-- =================================================
+         MEMBER PROFILE
+         ================================================= -->
+
+    <div class="dashboard-header">
+
+        <div class="member-profile">
+
+            <div class="profile-picture-container">
+
+                <img
+                    id="profilePicture"
+                    src=""
+                    alt="Profile Picture"
+                    class="profile-picture"
+                >
+
+                <label
+                    for="profilePictureInput"
+                    class="profile-picture-button"
+                >
+                    📷 Change Picture
+                </label>
+
+                <input
+                    type="file"
+                    id="profilePictureInput"
+                    accept="image/png,image/jpeg,image/webp"
+                    hidden
+                >
+
+            </div>
+
+
+            <div class="profile-details">
+
+                <h1>
+                    👋 Welcome,
+                    <span id="memberName">
+                        Member
+                    </span>
+                </h1>
+
+                <p>
+                    French Club Member
+                </p>
+
+                <p>
+                    <strong>GR Number:</strong>
+                    <span id="profileGR">
+                        -
+                    </span>
+                </p>
+
+                <p>
+                    <strong>Class:</strong>
+                    <span id="profileClass">
+                        -
+                    </span>
+                </p>
+
+                <p>
+                    <strong>Status:</strong>
+                    <span id="profileStatus">
+                        -
+                    </span>
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         MY INFORMATION
+         ================================================= -->
+
+    <section class="dashboard-section">
+
+        <h2>
+            👤 My Information
+        </h2>
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+
+                <h3>
+                    Full Name
+                </h3>
+
+                <strong id="myName">
+                    Loading...
+                </strong>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <h3>
+                    GR Number
+                </h3>
+
+                <strong id="myGR">
+                    Loading...
+                </strong>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <h3>
+                    Class
+                </h3>
+
+                <strong id="myClass">
+                    Loading...
+                </strong>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <h3>
+                    Status
+                </h3>
+
+                <strong id="myStatus">
+                    Loading...
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div style="margin-top:20px;">
+
+            <p>
+                <strong>Phone:</strong>
+                <span id="myPhone">
+                    Loading...
+                </span>
+            </p>
+
+            <p>
+                <strong>Email:</strong>
+                <span id="myEmail">
+                    Loading...
+                </span>
+            </p>
+
+            <p>
+                <strong>Date Joined:</strong>
+                <span id="myDateJoined">
+                    Loading...
+                </span>
+            </p>
+
+        </div>
+
+    </section>
+
+
+    <!-- =================================================
+         MY ATTENDANCE
+         ================================================= -->
+
+    <section class="dashboard-section">
+
+        <h2>
+            📋 My Attendance
+        </h2>
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+
+                <h3>
+                    Meetings
+                </h3>
+
+                <strong id="myMeetingCount">
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <h3>
+                    Present
+                </h3>
+
+                <strong id="myPresentCount">
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <h3>
+                    Absent
+                </h3>
+
+                <strong id="myAbsentCount">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div
+            class="table-container"
+            style="margin-top:20px;"
+        >
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Meeting</th>
+                        <th>Date</th>
+                        <th>Attendance</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="attendanceTable">
+
+                    <tr>
+
+                        <td colspan="3">
+                            Loading attendance...
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+<!-- =================================================
+     MEMBER NOTIFICATIONS
+     ================================================= -->
+
+<section class="dashboard-section">
+
+    <h2>
+        🔔 Notifications
+    </h2>
+
+    <div id="notificationsContainer">
+
+        <p id="notificationsLoading">
+            Loading notifications...
+        </p>
+
+    </div>
+
+</section>
+
+    <!-- =================================================
+         MY PAYMENTS
+         ================================================= -->
+
+    <section class="dashboard-section">
+
+        <h2>
+            💰 My Payments
+        </h2>
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+
+                <h3>
+                    Total Paid
+                </h3>
+
+                <strong id="myTotalPaid">
+                    GMD 0
+                </strong>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <h3>
+                    Payments
+                </h3>
+
+                <strong id="myPaymentCount">
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <div
+            class="table-container"
+            style="margin-top:20px;"
+        >
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="paymentsTable">
+
+                    <tr>
+
+                        <td colspan="5">
+                            Loading payments...
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+    <!-- =================================================
+         CHANGE PASSWORD
+         ================================================= -->
+
+    <section class="dashboard-section">
+
+        <h2>
+            🔐 Change Password
+        </h2>
+
+        <form id="changePasswordForm">
+
+            <div style="margin-bottom:15px;">
+
+                <label for="currentPassword">
+                    Current Password
+                </label>
+
+                <input
+                    type="password"
+                    id="currentPassword"
+                    placeholder="Enter your current password"
+                    required
+                >
+
+            </div>
+
+
+            <div style="margin-bottom:15px;">
+
+                <label for="newPassword">
+                    New Password
+                </label>
+
+                <input
+                    type="password"
+                    id="newPassword"
+                    placeholder="Enter your new password"
+                    minlength="6"
+                    required
+                >
+
+            </div>
+
+
+            <div style="margin-bottom:15px;">
+
+                <label for="confirmPassword">
+                    Confirm New Password
+                </label>
+
+                <input
+                    type="password"
+                    id="confirmPassword"
+                    placeholder="Confirm your new password"
+                    minlength="6"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="submit-btn"
+                id="savePasswordButton"
+            >
+                🔐 Change Password
+            </button>
+
+
+            <p
+                id="passwordMessage"
+                style="margin-top:15px;"
+            ></p>
+
+        </form>
+
+    </section>
+
+
+</main>
+
+
+<footer>
+
+    <p>
+        © 2026 French Club Management System
+    </p>
+
+    <p>
+        Member Portal
+    </p>
+
+</footer>
+
+
+<script src="js/member-dashboard.js"></script>
+
+</body>
+
+</html>

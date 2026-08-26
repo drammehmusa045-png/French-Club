@@ -1,0 +1,25 @@
+﻿node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.backup.*
+*-backup.*
+*backup*.js
+*backup*.html
+*backup*.css
+
+# User profile pictures
+backend/profile-pictures/
+backend/profile-pictures/**
+
+
+backend/server-before-reset-removal.js
