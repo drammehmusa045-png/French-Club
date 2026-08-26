@@ -2175,6 +2175,74 @@ app.post(
 );
 
 /* =====================================================
+   ADMIN - UPDATE MEMBER PHONE
+   ===================================================== */
+
+app.put(
+    "/api/admin/members/:grNumber/phone",
+    requireAdmin,
+    function (req, res) {
+
+        const grNumber =
+            String(req.params.grNumber || "")
+                .trim()
+                .toUpperCase();
+
+        const phone =
+            String(req.body.phone || "")
+                .trim();
+
+        if (!grNumber) {
+            return res.status(400).json({
+                message: "GR number is required."
+            });
+        }
+
+        if (!phone) {
+            return res.status(400).json({
+                message: "Phone number is required."
+            });
+        }
+
+        db.run(
+            `
+            UPDATE members
+            SET phone = ?
+            WHERE gr_number = ?
+            `,
+            [phone, grNumber],
+            function (error) {
+
+                if (error) {
+                    console.error(
+                        "Update phone error:",
+                        error
+                    );
+
+                    return res.status(500).json({
+                        message: "Unable to update phone number."
+                    });
+                }
+
+                if (this.changes === 0) {
+                    return res.status(404).json({
+                        message: "Member not found."
+                    });
+                }
+
+                return res.status(200).json({
+                    message: "Phone number updated successfully.",
+                    grNumber: grNumber,
+                    phone: phone
+                });
+
+            }
+        );
+
+    }
+);
+
+/* =====================================================
    ADMIN - GET PAYMENT MEMBERS
    ===================================================== */
 
