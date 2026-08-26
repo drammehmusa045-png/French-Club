@@ -81,13 +81,21 @@ loginForm.addEventListener("submit", async function (event) {
 
         /* REDIRECT */
 
-        setTimeout(function () {
+       setTimeout(function () {
 
-            window.location.href =
-                "/member-dashboard.html";
+    if (data.member.role === "admin") {
 
-        }, 500);
+        window.location.href =
+            "/admin-dashboard.html";
 
+    } else {
+
+        window.location.href =
+            "/member-dashboard.html";
+
+    }
+
+}, 500);
 
     } catch (error) {
 
