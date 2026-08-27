@@ -10,234 +10,54 @@ const db = require("../database/database");
 
 const app = express();
 const PORT = 3000;
-app.use(cors());
-
-app.use(express.json({
-    limit: "5mb"
-}));
-
 
 /* =====================================================
-   MEMBER REGISTRATION
+   PATHS
    ===================================================== */
 
-app.post(
-    "/api/auth/register",
-    async function (req, res) {
+const frontendPath = path.join(
+    __dirname,
+    "..",
+    "frontend"
+);
 
-        try {
+const profilePicturesPath = path.join(
+    __dirname,
+    "profile-pictures"
+);
 
-            const name =
-                String(
-                    req.body.name || ""
-                ).trim();
+console.log("Frontend path:", frontendPath);
 
-            const grNumber =
-                String(
-                    req.body.grNumber || ""
-                ).trim();
+/* =====================================================
+   MIDDLEWARE
+   ===================================================== */
 
-            const className =
-                String(
-                    req.body.className || ""
-                ).trim();
+app.use(cors());
 
-            const phone =
-                String(
-                    req.body.phone || ""
-                ).trim();
+app.use(
+    express.json({
+        limit: "10mb"
+    })
+);
 
-            const email =
-                String(
-                    req.body.email || ""
-                ).trim();
+app.use(
+    express.urlencoded({
+        extended: true,
+        limit: "10mb"
+    })
+);
 
-            const password =
-                String(
-                    req.body.password || ""
-                );
+/* =====================================================
+   FRONTEND STATIC FILES
+   ===================================================== */
 
+app.use(
+    express.static(frontendPath)
+);
 
-            if (
-                !name ||
-                !grNumber ||
-                !className ||
-                !phone ||
-                !password
-            ) {
-
-                return res.status(400).json({
-                    message:
-                        "Please complete all required fields."
-                });
-
-            }
-
-
-            if (password.length < 6) {
-
-                return res.status(400).json({
-                    message:
-                        "Password must be at least 6 characters."
-                });
-
-            }
-
-
-            db.get(
-                `
-                SELECT id
-                FROM members
-                WHERE gr_number = ?
-                `,
-                [grNumber],
-
-                async function (
-                    error,
-                    existingMember
-                ) {
-
-                    if (error) {
-
-                        console.error(
-                            "Registration database error:",
-                            error
-                        );
-
-                        return res.status(500).json({
-                            message:
-                                "Database error."
-                        });
-
-                    }
-
-
-                    if (existingMember) {
-
-                        return res.status(409).json({
-                            message:
-                                "This GR number is already registered."
-                        });
-
-                    }
-
-
-                    try {
-
-                        const hashedPassword =
-                            await bcrypt.hash(
-                                password,
-                                10
-                            );
-
-                        const dateJoined =
-                            new Date().toISOString();
-
-
-                        db.run(
-                            `
-                            INSERT INTO members
-                            (
-                                name,
-                                gr_number,
-                                class_name,
-                                phone,
-                                email,
-                                password,
-                                date_joined,
-                                status,
-                                role
-                            )
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            `,
-
-                            [
-                                name,
-                                grNumber,
-                                className,
-                                phone,
-                                email || null,
-                                hashedPassword,
-                                dateJoined,
-                                "Active",
-                                "member"
-                            ],
-
-                            function (insertError) {
-
-                                if (insertError) {
-
-                                    console.error(
-                                        "Member registration error:",
-                                        insertError
-                                    );
-
-                                    return res.status(500).json({
-                                        message:
-                                            "Unable to register member."
-                                    });
-
-                                }
-
-
-                                console.log(
-                                    "New member registered:",
-                                    grNumber
-                                );
-
-
-                                return res.status(201).json({
-
-                                    message:
-                                        "Member registered successfully.",
-
-                                    memberId:
-                                        this.lastID,
-
-                                    role:
-                                        "member"
-
-                                });
-
-                            }
-                        );
-
-                    }
-
-                    catch (passwordError) {
-
-                        console.error(
-                            "Password hashing error:",
-                            passwordError
-                        );
-
-                        return res.status(500).json({
-                            message:
-                                "Unable to create account."
-                        });
-
-                    }
-
-                }
-            );
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Registration server error:",
-                error
-            );
-
-            return res.status(500).json({
-                message:
-                    "Server error."
-            });
-
-        }
-
-    }
+app.use(
+    "/profile-pictures",
+    express.static(profilePicturesPath)
 );
 
 /* =====================================================
@@ -246,10 +66,9 @@ app.post(
 
 function requireAdmin(req, res, next) {
 
-    const grNumber =
-        String(
-            req.headers["x-admin-gr"] || ""
-        ).trim();
+    const grNumber = String(
+        req.headers["x-admin-gr"] || ""
+    ).trim().toUpperCase();
 
     if (!grNumber) {
 
@@ -307,50 +126,6 @@ function requireAdmin(req, res, next) {
 
 }
 
-
-/* =====================================================
-   MIDDLEWARE
-   ===================================================== */
-
-app.use(cors());
-
-app.use(
-    express.json({
-        limit: "5mb"
-    })
-);
-
-
-/* =====================================================
-   FRONTEND
-   ===================================================== */
-
-const frontendPath = path.join(
-    __dirname,
-    "..",
-    "frontend"
-);
-
-console.log(
-    "Frontend path:",
-    frontendPath
-);
-
-app.use(
-    express.static(frontendPath)
-);
-
-app.use(
-    "/profile-pictures",
-    express.static(
-        path.join(
-            __dirname,
-            "profile-pictures"
-        )
-    )
-);
-
-
 /* =====================================================
    HOME
    ===================================================== */
@@ -369,7 +144,6 @@ app.get(
     }
 );
 
-
 /* =====================================================
    API TEST
    ===================================================== */
@@ -386,10 +160,212 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   MEMBER / ADMIN LOGIN
+   MEMBER REGISTRATION
    ===================================================== */
+
+app.post(
+    "/api/auth/register",
+    async function (req, res) {
+
+        try {
+
+            const name = String(
+                req.body.name || ""
+            ).trim();
+
+            const grNumber = String(
+                req.body.grNumber || ""
+            ).trim().toUpperCase();
+
+            const className = String(
+                req.body.className || ""
+            ).trim();
+
+            const phone = String(
+                req.body.phone || ""
+            ).trim();
+
+            const email = String(
+                req.body.email || ""
+            ).trim();
+
+            const password = String(
+                req.body.password || ""
+            );
+
+            if (
+                !name ||
+                !grNumber ||
+                !className ||
+                !phone ||
+                !password
+            ) {
+
+                return res.status(400).json({
+                    message:
+                        "Please complete all required fields."
+                });
+
+            }
+
+            if (password.length < 6) {
+
+                return res.status(400).json({
+                    message:
+                        "Password must be at least 6 characters."
+                });
+
+            }
+
+            db.get(
+                `
+                SELECT id
+                FROM members
+                WHERE gr_number = ?
+                `,
+                [grNumber],
+
+                async function (
+                    error,
+                    existingMember
+                ) {
+
+                    if (error) {
+
+                        console.error(
+                            "Registration database error:",
+                            error
+                        );
+
+                        return res.status(500).json({
+                            message:
+                                "Database error."
+                        });
+
+                    }
+
+                    if (existingMember) {
+
+                        return res.status(409).json({
+                            message:
+                                "This GR number is already registered."
+                        });
+
+                    }
+
+                    try {
+
+                        const hashedPassword =
+                            await bcrypt.hash(
+                                password,
+                                10
+                            );
+
+                        const dateJoined =
+                            new Date().toISOString();
+
+                        db.run(
+                            `
+                            INSERT INTO members
+                            (
+                                name,
+                                gr_number,
+                                class_name,
+                                phone,
+                                email,
+                                password,
+                                date_joined,
+                                status,
+                                role
+                            )
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            `,
+                            [
+                                name,
+                                grNumber,
+                                className,
+                                phone,
+                                email || null,
+                                hashedPassword,
+                                dateJoined,
+                                "Active",
+                                "member"
+                            ],
+
+                            function (insertError) {
+
+                                if (insertError) {
+
+                                    console.error(
+                                        "Member registration error:",
+                                        insertError
+                                    );
+
+                                    return res.status(500).json({
+                                        message:
+                                            "Unable to register member."
+                                    });
+
+                                }
+
+                                console.log(
+                                    "New member registered:",
+                                    grNumber
+                                );
+
+                                return res.status(201).json({
+
+                                    message:
+                                        "Member registered successfully.",
+
+                                    memberId:
+                                        this.lastID,
+
+                                    role:
+                                        "member"
+
+                                });
+
+                            }
+                        );
+
+                    }
+                    catch (passwordError) {
+
+                        console.error(
+                            "Password hashing error:",
+                            passwordError
+                        );
+
+                        return res.status(500).json({
+                            message:
+                                "Unable to create account."
+                        });
+
+                    }
+
+                }
+            );
+
+        }
+        catch (error) {
+
+            console.error(
+                "Registration server error:",
+                error
+            );
+
+            return res.status(500).json({
+                message:
+                    "Server error."
+            });
+
+        }
+
+    }
+);
+
 /* =====================================================
    MEMBER / ADMIN LOGIN
    ===================================================== */
@@ -400,16 +376,13 @@ app.post(
 
         try {
 
-            const grNumber =
-                String(
-                    req.body.grNumber || ""
-                ).trim();
+            const grNumber = String(
+                req.body.grNumber || ""
+            ).trim().toUpperCase();
 
-            const password =
-                String(
-                    req.body.password || ""
-                );
-
+            const password = String(
+                req.body.password || ""
+            );
 
             if (
                 !grNumber ||
@@ -422,7 +395,6 @@ app.post(
                 });
 
             }
-
 
             db.get(
                 `
@@ -451,7 +423,6 @@ app.post(
 
                     }
 
-
                     if (!member) {
 
                         return res.status(401).json({
@@ -461,7 +432,6 @@ app.post(
 
                     }
 
-
                     try {
 
                         const passwordCorrect =
@@ -469,7 +439,6 @@ app.post(
                                 password,
                                 member.password
                             );
-
 
                         if (!passwordCorrect) {
 
@@ -480,9 +449,7 @@ app.post(
 
                         }
 
-
                         delete member.password;
-
 
                         return res.status(200).json({
 
@@ -498,7 +465,6 @@ app.post(
                         });
 
                     }
-
                     catch (passwordError) {
 
                         console.error(
@@ -517,7 +483,6 @@ app.post(
             );
 
         }
-
         catch (error) {
 
             console.error(
@@ -534,7 +499,6 @@ app.post(
 
     }
 );
-
 
 /* =====================================================
    ADMIN - GET ALL MEMBERS
@@ -560,7 +524,6 @@ app.get(
             FROM members
             ORDER BY id DESC
             `,
-
             [],
 
             function (
@@ -582,12 +545,9 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
-
                     members:
                         members || []
-
                 });
 
             }
@@ -612,7 +572,9 @@ app.put(
             String(req.body.name || "").trim();
 
         const grNumber =
-            String(req.body.grNumber || "").trim();
+            String(req.body.grNumber || "")
+                .trim()
+                .toUpperCase();
 
         const className =
             String(req.body.className || "").trim();
@@ -624,8 +586,9 @@ app.put(
             String(req.body.email || "").trim();
 
         const status =
-            String(req.body.status || "Active").trim();
-
+            String(
+                req.body.status || "Active"
+            ).trim();
 
         if (
             !Number.isInteger(memberId) ||
@@ -638,7 +601,6 @@ app.put(
             });
 
         }
-
 
         if (
             !name ||
@@ -654,7 +616,6 @@ app.put(
 
         }
 
-
         if (
             status !== "Active" &&
             status !== "Inactive"
@@ -666,7 +627,6 @@ app.put(
             });
 
         }
-
 
         db.get(
             `
@@ -697,7 +657,6 @@ app.put(
 
                 }
 
-
                 if (!member) {
 
                     return res.status(404).json({
@@ -706,7 +665,6 @@ app.put(
                     });
 
                 }
-
 
                 if (
                     member.role === "admin"
@@ -719,11 +677,9 @@ app.put(
 
                 }
 
-
                 db.get(
                     `
-                    SELECT
-                        id
+                    SELECT id
                     FROM members
                     WHERE
                         gr_number = ?
@@ -753,7 +709,6 @@ app.put(
 
                         }
 
-
                         if (duplicate) {
 
                             return res.status(409).json({
@@ -763,11 +718,9 @@ app.put(
 
                         }
 
-
                         db.run(
                             `
                             UPDATE members
-
                             SET
                                 name = ?,
                                 gr_number = ?,
@@ -775,10 +728,8 @@ app.put(
                                 phone = ?,
                                 email = ?,
                                 status = ?
-
                             WHERE id = ?
                             `,
-
                             [
                                 name,
                                 grNumber,
@@ -807,12 +758,9 @@ app.put(
 
                                 }
 
-
                                 return res.status(200).json({
-
                                     message:
                                         "Member information updated successfully."
-
                                 });
 
                             }
@@ -846,7 +794,6 @@ app.post(
                     req.body.newPassword || ""
                 );
 
-
             if (
                 !Number.isInteger(memberId) ||
                 memberId <= 0
@@ -859,7 +806,6 @@ app.post(
 
             }
 
-
             if (!newPassword) {
 
                 return res.status(400).json({
@@ -869,7 +815,6 @@ app.post(
 
             }
 
-
             if (newPassword.length < 6) {
 
                 return res.status(400).json({
@@ -878,7 +823,6 @@ app.post(
                 });
 
             }
-
 
             db.get(
                 `
@@ -912,7 +856,6 @@ app.post(
 
                     }
 
-
                     if (!member) {
 
                         return res.status(404).json({
@@ -921,7 +864,6 @@ app.post(
                         });
 
                     }
-
 
                     if (
                         member.role === "admin"
@@ -934,7 +876,6 @@ app.post(
 
                     }
 
-
                     try {
 
                         const hashedPassword =
@@ -943,14 +884,12 @@ app.post(
                                 10
                             );
 
-
                         db.run(
                             `
                             UPDATE members
                             SET password = ?
                             WHERE id = ?
                             `,
-
                             [
                                 hashedPassword,
                                 memberId
@@ -974,26 +913,6 @@ app.post(
 
                                 }
 
-
-                                if (
-                                    this.changes === 0
-                                ) {
-
-                                    return res.status(404).json({
-                                        message:
-                                            "Member not found."
-                                    });
-
-                                }
-
-
-                                console.log(
-                                    "Admin reset password for member:",
-                                    member.name,
-                                    "(" + member.gr_number + ")"
-                                );
-
-
                                 return res.status(200).json({
 
                                     message:
@@ -1011,7 +930,6 @@ app.post(
                         );
 
                     }
-
                     catch (passwordError) {
 
                         console.error(
@@ -1030,7 +948,6 @@ app.post(
             );
 
         }
-
         catch (error) {
 
             console.error(
@@ -1048,7 +965,6 @@ app.post(
     }
 );
 
-
 /* =====================================================
    ADMIN - REMOVE MEMBER
    ===================================================== */
@@ -1061,7 +977,6 @@ app.delete(
         const memberId =
             Number(req.params.id);
 
-
         if (
             !Number.isInteger(memberId) ||
             memberId <= 0
@@ -1073,7 +988,6 @@ app.delete(
             });
 
         }
-
 
         db.get(
             `
@@ -1105,7 +1019,6 @@ app.delete(
 
                 }
 
-
                 if (!member) {
 
                     return res.status(404).json({
@@ -1114,7 +1027,6 @@ app.delete(
                     });
 
                 }
-
 
                 if (
                     member.role === "admin"
@@ -1126,7 +1038,6 @@ app.delete(
                     });
 
                 }
-
 
                 db.run(
                     `
@@ -1151,7 +1062,6 @@ app.delete(
 
                         }
 
-
                         db.run(
                             `
                             DELETE FROM subscriptions
@@ -1159,9 +1069,7 @@ app.delete(
                             `,
                             [memberId],
 
-                            function (
-                                paymentError
-                            ) {
+                            function (paymentError) {
 
                                 if (paymentError) {
 
@@ -1176,7 +1084,6 @@ app.delete(
                                     });
 
                                 }
-
 
                                 db.run(
                                     `
@@ -1203,28 +1110,6 @@ app.delete(
 
                                         }
 
-
-                                        if (
-                                            this.changes === 0
-                                        ) {
-
-                                            return res.status(404).json({
-                                                message:
-                                                    "Member not found."
-                                            });
-
-                                        }
-
-
-                                        console.log(
-                                            "Member removed:",
-                                            member.name,
-                                            "(ID:",
-                                            member.id,
-                                            ")"
-                                        );
-
-
                                         return res.status(200).json({
 
                                             message:
@@ -1250,7 +1135,6 @@ app.delete(
     }
 );
 
-
 /* =====================================================
    ADMIN - GET MEETINGS
    ===================================================== */
@@ -1271,7 +1155,6 @@ app.get(
             FROM meetings
             ORDER BY meeting_date DESC, id DESC
             `,
-
             [],
 
             function (
@@ -1287,23 +1170,17 @@ app.get(
                     );
 
                     return res.status(500).json({
-
                         message:
                             "Unable to load meetings.",
-
                         error:
                             error.message
-
                     });
 
                 }
 
-
                 return res.status(200).json({
-
                     meetings:
                         meetings || []
-
                 });
 
             }
@@ -1311,7 +1188,6 @@ app.get(
 
     }
 );
-
 
 /* =====================================================
    ADMIN - CREATE MEETING
@@ -1339,21 +1215,17 @@ app.post(
                 ).trim()
                 : null;
 
-
         if (
             !title ||
             !meetingDate
         ) {
 
             return res.status(400).json({
-
                 message:
                     "Meeting title and date are required."
-
             });
 
         }
-
 
         db.run(
             `
@@ -1366,7 +1238,6 @@ app.post(
             )
             VALUES (?, ?, ?, ?)
             `,
-
             [
                 title,
                 meetingDate,
@@ -1384,21 +1255,16 @@ app.post(
                     );
 
                     return res.status(500).json({
-
                         message:
                             "Unable to create meeting.",
-
                         error:
                             error.message
-
                     });
 
                 }
 
-
                 const meetingId =
                     this.lastID;
-
 
                 db.run(
                     `
@@ -1410,7 +1276,6 @@ app.post(
                     )
                     VALUES (?, ?, ?)
                     `,
-
                     [
                         "New Meeting",
                         `A new French Club meeting has been scheduled: ${title}.`,
@@ -1430,7 +1295,6 @@ app.post(
 
                         }
 
-
                         return res.status(201).json({
 
                             message:
@@ -1449,7 +1313,6 @@ app.post(
 
     }
 );
-
 
 /* =====================================================
    ADMIN - EDIT MEETING
@@ -1480,7 +1343,6 @@ app.put(
                 req.body.description || ""
             ).trim();
 
-
         if (
             !Number.isInteger(meetingId) ||
             meetingId <= 0
@@ -1492,7 +1354,6 @@ app.put(
             });
 
         }
-
 
         if (
             !title ||
@@ -1506,7 +1367,6 @@ app.put(
 
         }
 
-
         db.run(
             `
             UPDATE meetings
@@ -1516,7 +1376,6 @@ app.put(
                 description = ?
             WHERE id = ?
             `,
-
             [
                 title,
                 meetingDate,
@@ -1534,17 +1393,13 @@ app.put(
                     );
 
                     return res.status(500).json({
-
                         message:
                             "Unable to update meeting.",
-
                         error:
                             error.message
-
                     });
 
                 }
-
 
                 if (
                     this.changes === 0
@@ -1557,21 +1412,11 @@ app.put(
 
                 }
 
-
-                console.log(
-                    "Meeting updated:",
-                    meetingId
-                );
-
-
                 return res.status(200).json({
-
                     message:
                         "Meeting updated successfully.",
-
                     meetingId:
                         meetingId
-
                 });
 
             }
@@ -1579,7 +1424,6 @@ app.put(
 
     }
 );
-
 
 /* =====================================================
    ADMIN - DELETE MEETING
@@ -1595,7 +1439,6 @@ app.delete(
                 req.params.meetingId
             );
 
-
         if (
             !Number.isInteger(meetingId) ||
             meetingId <= 0
@@ -1608,7 +1451,6 @@ app.delete(
 
         }
 
-
         db.get(
             `
             SELECT
@@ -1617,7 +1459,6 @@ app.delete(
             FROM meetings
             WHERE id = ?
             `,
-
             [meetingId],
 
             function (
@@ -1633,17 +1474,13 @@ app.delete(
                     );
 
                     return res.status(500).json({
-
                         message:
                             "Unable to find meeting.",
-
                         error:
                             findError.message
-
                     });
 
                 }
-
 
                 if (!meeting) {
 
@@ -1654,17 +1491,11 @@ app.delete(
 
                 }
 
-
-                /*
-                 * Delete attendance records first.
-                 */
-
                 db.run(
                     `
                     DELETE FROM attendance
                     WHERE meeting_id = ?
                     `,
-
                     [meetingId],
 
                     function (attendanceError) {
@@ -1677,28 +1508,19 @@ app.delete(
                             );
 
                             return res.status(500).json({
-
                                 message:
                                     "Unable to delete meeting attendance.",
-
                                 error:
                                     attendanceError.message
-
                             });
 
                         }
-
-
-                        /*
-                         * Delete the meeting.
-                         */
 
                         db.run(
                             `
                             DELETE FROM meetings
                             WHERE id = ?
                             `,
-
                             [meetingId],
 
                             function (deleteError) {
@@ -1711,38 +1533,13 @@ app.delete(
                                     );
 
                                     return res.status(500).json({
-
                                         message:
                                             "Unable to delete meeting.",
-
                                         error:
                                             deleteError.message
-
                                     });
 
                                 }
-
-
-                                if (
-                                    this.changes === 0
-                                ) {
-
-                                    return res.status(404).json({
-                                        message:
-                                            "Meeting not found."
-                                    });
-
-                                }
-
-
-                                console.log(
-                                    "Meeting deleted:",
-                                    meeting.title,
-                                    "(ID:",
-                                    meeting.id,
-                                    ")"
-                                );
-
 
                                 return res.status(200).json({
 
@@ -1769,7 +1566,6 @@ app.delete(
     }
 );
 
-
 /* =====================================================
    ATTENDANCE - GET MEMBERS
    ===================================================== */
@@ -1784,7 +1580,6 @@ app.get(
                 req.params.meetingId
             );
 
-
         if (
             !Number.isInteger(meetingId) ||
             meetingId <= 0
@@ -1797,11 +1592,9 @@ app.get(
 
         }
 
-
         db.all(
             `
             SELECT
-
                 members.id,
                 members.name,
                 members.gr_number,
@@ -1815,15 +1608,11 @@ app.get(
             FROM members
 
             LEFT JOIN attendance
-
-                ON members.id =
-                   attendance.member_id
-
+                ON members.id = attendance.member_id
                 AND attendance.meeting_id = ?
 
             ORDER BY members.id ASC
             `,
-
             [meetingId],
 
             function (
@@ -1839,23 +1628,17 @@ app.get(
                     );
 
                     return res.status(500).json({
-
                         message:
                             "Unable to load attendance.",
-
                         error:
                             error.message
-
                     });
 
                 }
 
-
                 return res.status(200).json({
-
                     members:
                         members || []
-
                 });
 
             }
@@ -1863,7 +1646,6 @@ app.get(
 
     }
 );
-
 
 /* =====================================================
    ATTENDANCE - SAVE
@@ -1887,7 +1669,6 @@ app.post(
         const status =
             req.body.status;
 
-
         if (
             !Number.isInteger(meetingId) ||
             meetingId <= 0
@@ -1899,7 +1680,6 @@ app.post(
             });
 
         }
-
 
         if (
             !Number.isInteger(memberId) ||
@@ -1913,7 +1693,6 @@ app.post(
 
         }
 
-
         if (
             status !== "Present" &&
             status !== "Absent"
@@ -1925,7 +1704,6 @@ app.post(
             });
 
         }
-
 
         db.run(
             `
@@ -1939,13 +1717,10 @@ app.post(
             VALUES (?, ?, ?, ?)
 
             ON CONFLICT(meeting_id, member_id)
-
             DO UPDATE SET
-
                 status = excluded.status,
                 marked_at = excluded.marked_at
             `,
-
             [
                 meetingId,
                 memberId,
@@ -1963,23 +1738,17 @@ app.post(
                     );
 
                     return res.status(500).json({
-
                         message:
                             "Unable to save attendance.",
-
                         error:
                             error.message
-
                     });
 
                 }
 
-
                 return res.status(200).json({
-
                     message:
                         "Attendance saved successfully."
-
                 });
 
             }
@@ -1987,7 +1756,6 @@ app.post(
 
     }
 );
-
 
 /* =====================================================
    ATTENDANCE COUNT
@@ -2005,7 +1773,6 @@ app.get(
             FROM attendance
             WHERE status = 'Present'
             `,
-
             [],
 
             function (
@@ -2027,14 +1794,11 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
-
                     count:
                         result
                             ? result.total
                             : 0
-
                 });
 
             }
@@ -2042,7 +1806,6 @@ app.get(
 
     }
 );
-
 
 /* =====================================================
    ADMIN - GET ALL PAYMENTS
@@ -2070,13 +1833,11 @@ app.get(
             FROM subscriptions
 
             LEFT JOIN members
-                ON subscriptions.member_id =
-                   members.id
+                ON subscriptions.member_id = members.id
 
             ORDER BY
                 subscriptions.payment_date DESC
             `,
-
             [],
 
             function (
@@ -2098,12 +1859,9 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
-
                     subscriptions:
                         rows || []
-
                 });
 
             }
@@ -2121,27 +1879,48 @@ app.post(
     requireAdmin,
     function (req, res) {
 
-        const grNumbers = Array.isArray(req.body.grNumbers)
-            ? req.body.grNumbers
-            : [];
+        const grNumbers =
+            Array.isArray(req.body.grNumbers)
+                ? req.body.grNumbers
+                : [];
 
-        if (grNumbers.length === 0) {
+        if (
+            grNumbers.length === 0
+        ) {
+
             return res.status(400).json({
-                message: "No members selected."
+                message:
+                    "No members selected."
             });
+
         }
 
-        const cleanGRNumbers = grNumbers
-            .map(function (gr) {
-                return String(gr).trim().toUpperCase();
-            })
-            .filter(Boolean);
+        const cleanGRNumbers =
+            grNumbers
+                .map(function (gr) {
+                    return String(gr)
+                        .trim()
+                        .toUpperCase();
+                })
+                .filter(Boolean);
 
-        const placeholders = cleanGRNumbers
-            .map(function () {
-                return "?";
-            })
-            .join(",");
+        if (
+            cleanGRNumbers.length === 0
+        ) {
+
+            return res.status(400).json({
+                message:
+                    "No valid GR numbers provided."
+            });
+
+        }
+
+        const placeholders =
+            cleanGRNumbers
+                .map(function () {
+                    return "?";
+                })
+                .join(",");
 
         db.run(
             `
@@ -2150,22 +1929,31 @@ app.post(
             WHERE gr_number IN (${placeholders})
             `,
             cleanGRNumbers,
+
             function (error) {
 
                 if (error) {
+
                     console.error(
                         "Promote members error:",
                         error
                     );
 
                     return res.status(500).json({
-                        message: "Unable to promote members."
+                        message:
+                            "Unable to promote members."
                     });
+
                 }
 
                 return res.status(200).json({
-                    message: "Members promoted successfully.",
-                    updated: this.changes
+
+                    message:
+                        "Members promoted successfully.",
+
+                    updated:
+                        this.changes
+
                 });
 
             }
@@ -2184,24 +1972,33 @@ app.put(
     function (req, res) {
 
         const grNumber =
-            String(req.params.grNumber || "")
+            String(
+                req.params.grNumber || ""
+            )
                 .trim()
                 .toUpperCase();
 
         const phone =
-            String(req.body.phone || "")
-                .trim();
+            String(
+                req.body.phone || ""
+            ).trim();
 
         if (!grNumber) {
+
             return res.status(400).json({
-                message: "GR number is required."
+                message:
+                    "GR number is required."
             });
+
         }
 
         if (!phone) {
+
             return res.status(400).json({
-                message: "Phone number is required."
+                message:
+                    "Phone number is required."
             });
+
         }
 
         db.run(
@@ -2210,30 +2007,49 @@ app.put(
             SET phone = ?
             WHERE gr_number = ?
             `,
-            [phone, grNumber],
+            [
+                phone,
+                grNumber
+            ],
+
             function (error) {
 
                 if (error) {
+
                     console.error(
                         "Update phone error:",
                         error
                     );
 
                     return res.status(500).json({
-                        message: "Unable to update phone number."
+                        message:
+                            "Unable to update phone number."
                     });
+
                 }
 
-                if (this.changes === 0) {
+                if (
+                    this.changes === 0
+                ) {
+
                     return res.status(404).json({
-                        message: "Member not found."
+                        message:
+                            "Member not found."
                     });
+
                 }
 
                 return res.status(200).json({
-                    message: "Phone number updated successfully.",
-                    grNumber: grNumber,
-                    phone: phone
+
+                    message:
+                        "Phone number updated successfully.",
+
+                    grNumber:
+                        grNumber,
+
+                    phone:
+                        phone
+
                 });
 
             }
@@ -2262,7 +2078,6 @@ app.get(
             WHERE role = 'member'
             ORDER BY name ASC
             `,
-
             [],
 
             function (
@@ -2284,12 +2099,9 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
-
                     members:
                         members || []
-
                 });
 
             }
@@ -2297,7 +2109,6 @@ app.get(
 
     }
 );
-
 
 /* =====================================================
    ADMIN - SAVE PAYMENT
@@ -2317,7 +2128,6 @@ app.post(
             notes
         } = req.body;
 
-
         if (!memberId) {
 
             return res.status(400).json({
@@ -2326,7 +2136,6 @@ app.post(
             });
 
         }
-
 
         if (
             !amount ||
@@ -2340,7 +2149,6 @@ app.post(
 
         }
 
-
         if (!paymentDate) {
 
             return res.status(400).json({
@@ -2349,7 +2157,6 @@ app.post(
             });
 
         }
-
 
         db.run(
             `
@@ -2364,7 +2171,6 @@ app.post(
             )
             VALUES (?, ?, ?, ?, ?, ?)
             `,
-
             [
                 memberId,
                 Number(amount),
@@ -2390,7 +2196,6 @@ app.post(
 
                 }
 
-
                 return res.status(201).json({
 
                     message:
@@ -2406,7 +2211,6 @@ app.post(
 
     }
 );
-
 
 /* =====================================================
    ADMIN - PAYMENT TOTAL
@@ -2424,12 +2228,9 @@ app.get(
                     SUM(amount),
                     0
                 ) AS total
-
             FROM subscriptions
-
             WHERE status = 'Paid'
             `,
-
             [],
 
             function (
@@ -2451,14 +2252,11 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
-
                     total:
                         result
                             ? result.total
                             : 0
-
                 });
 
             }
@@ -2466,7 +2264,6 @@ app.get(
 
     }
 );
-
 
 /* =====================================================
    MEMBER - GET OWN PROFILE
@@ -2479,8 +2276,9 @@ app.get(
         const grNumber =
             String(
                 req.params.grNumber || ""
-            ).trim();
-
+            )
+                .trim()
+                .toUpperCase();
 
         db.get(
             `
@@ -2498,7 +2296,6 @@ app.get(
             FROM members
             WHERE gr_number = ?
             `,
-
             [grNumber],
 
             function (
@@ -2520,7 +2317,6 @@ app.get(
 
                 }
 
-
                 if (!member) {
 
                     return res.status(404).json({
@@ -2529,7 +2325,6 @@ app.get(
                     });
 
                 }
-
 
                 return res.status(200).json({
                     member:
@@ -2541,7 +2336,6 @@ app.get(
 
     }
 );
-
 
 /* =====================================================
    MEMBER - OWN ATTENDANCE
@@ -2556,6 +2350,17 @@ app.get(
                 req.params.memberId
             );
 
+        if (
+            !Number.isInteger(memberId) ||
+            memberId <= 0
+        ) {
+
+            return res.status(400).json({
+                message:
+                    "Invalid member ID."
+            });
+
+        }
 
         db.all(
             `
@@ -2568,14 +2373,12 @@ app.get(
             FROM attendance
 
             INNER JOIN meetings
-                ON attendance.meeting_id =
-                   meetings.id
+                ON attendance.meeting_id = meetings.id
 
             WHERE attendance.member_id = ?
 
             ORDER BY meetings.meeting_date DESC
             `,
-
             [memberId],
 
             function (
@@ -2597,12 +2400,9 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
-
                     attendance:
                         attendance || []
-
                 });
 
             }
@@ -2610,7 +2410,6 @@ app.get(
 
     }
 );
-
 
 /* =====================================================
    MEMBER - OWN PAYMENTS
@@ -2625,6 +2424,17 @@ app.get(
                 req.params.memberId
             );
 
+        if (
+            !Number.isInteger(memberId) ||
+            memberId <= 0
+        ) {
+
+            return res.status(400).json({
+                message:
+                    "Invalid member ID."
+            });
+
+        }
 
         db.all(
             `
@@ -2634,14 +2444,10 @@ app.get(
                 payment_method,
                 status,
                 notes
-
             FROM subscriptions
-
             WHERE member_id = ?
-
             ORDER BY payment_date DESC
             `,
-
             [memberId],
 
             function (
@@ -2663,12 +2469,9 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
-
                     payments:
                         payments || []
-
                 });
 
             }
@@ -2676,7 +2479,6 @@ app.get(
 
     }
 );
-
 
 /* =====================================================
    MEMBER - CHANGE PASSWORD
@@ -2703,7 +2505,6 @@ app.post(
                     req.body.newPassword || ""
                 );
 
-
             if (
                 !Number.isInteger(memberId) ||
                 memberId <= 0
@@ -2716,7 +2517,6 @@ app.post(
 
             }
 
-
             if (!currentPassword) {
 
                 return res.status(400).json({
@@ -2725,7 +2525,6 @@ app.post(
                 });
 
             }
-
 
             if (!newPassword) {
 
@@ -2736,7 +2535,6 @@ app.post(
 
             }
 
-
             if (newPassword.length < 6) {
 
                 return res.status(400).json({
@@ -2746,7 +2544,6 @@ app.post(
 
             }
 
-
             db.get(
                 `
                 SELECT
@@ -2755,7 +2552,6 @@ app.post(
                 FROM members
                 WHERE id = ?
                 `,
-
                 [memberId],
 
                 async function (
@@ -2777,7 +2573,6 @@ app.post(
 
                     }
 
-
                     if (!member) {
 
                         return res.status(404).json({
@@ -2787,7 +2582,6 @@ app.post(
 
                     }
 
-
                     try {
 
                         const passwordCorrect =
@@ -2795,7 +2589,6 @@ app.post(
                                 currentPassword,
                                 member.password
                             );
-
 
                         if (!passwordCorrect) {
 
@@ -2806,13 +2599,11 @@ app.post(
 
                         }
 
-
                         const hashedPassword =
                             await bcrypt.hash(
                                 newPassword,
                                 10
                             );
-
 
                         db.run(
                             `
@@ -2820,7 +2611,6 @@ app.post(
                             SET password = ?
                             WHERE id = ?
                             `,
-
                             [
                                 hashedPassword,
                                 memberId
@@ -2844,19 +2634,15 @@ app.post(
 
                                 }
 
-
                                 return res.status(200).json({
-
                                     message:
                                         "Password changed successfully."
-
                                 });
 
                             }
                         );
 
                     }
-
                     catch (passwordError) {
 
                         console.error(
@@ -2875,7 +2661,6 @@ app.post(
             );
 
         }
-
         catch (error) {
 
             console.error(
@@ -2892,7 +2677,6 @@ app.post(
 
     }
 );
-
 
 /* =====================================================
    MEMBER - UPDATE PROFILE PICTURE
@@ -2914,7 +2698,6 @@ app.post(
                     req.body.image || ""
                 );
 
-
             if (
                 !Number.isInteger(memberId) ||
                 memberId <= 0
@@ -2927,7 +2710,6 @@ app.post(
 
             }
 
-
             if (!image) {
 
                 return res.status(400).json({
@@ -2936,7 +2718,6 @@ app.post(
                 });
 
             }
-
 
             if (
                 !image.startsWith(
@@ -2951,25 +2732,22 @@ app.post(
 
             }
 
-
             if (
                 image.length >
-                5 * 1024 * 1024
+                10 * 1024 * 1024
             ) {
 
                 return res.status(400).json({
                     message:
-                        "Picture is too large. Please choose a smaller picture."
+                        "Picture is too large."
                 });
 
             }
-
 
             const match =
                 image.match(
                     /^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/
                 );
-
 
             if (!match) {
 
@@ -2980,16 +2758,13 @@ app.post(
 
             }
 
-
             const extension =
                 match[1] === "jpeg"
                     ? "jpg"
                     : match[1];
 
-
             const imageData =
                 match[2];
-
 
             const buffer =
                 Buffer.from(
@@ -2997,29 +2772,20 @@ app.post(
                     "base64"
                 );
 
-
-            const profileFolder =
-                path.join(
-                    __dirname,
-                    "profile-pictures"
-                );
-
-
             if (
                 !fs.existsSync(
-                    profileFolder
+                    profilePicturesPath
                 )
             ) {
 
                 fs.mkdirSync(
-                    profileFolder,
+                    profilePicturesPath,
                     {
                         recursive: true
                     }
                 );
 
             }
-
 
             const filename =
                 "member-" +
@@ -3029,24 +2795,20 @@ app.post(
                 "." +
                 extension;
 
-
             const filePath =
                 path.join(
-                    profileFolder,
+                    profilePicturesPath,
                     filename
                 );
-
 
             fs.writeFileSync(
                 filePath,
                 buffer
             );
 
-
             const picturePath =
                 "/profile-pictures/" +
                 filename;
-
 
             db.run(
                 `
@@ -3054,7 +2816,6 @@ app.post(
                 SET profile_picture = ?
                 WHERE id = ?
                 `,
-
                 [
                     picturePath,
                     memberId
@@ -3076,7 +2837,6 @@ app.post(
 
                     }
 
-
                     return res.status(200).json({
 
                         message:
@@ -3091,7 +2851,6 @@ app.post(
             );
 
         }
-
         catch (error) {
 
             console.error(
@@ -3109,7 +2868,6 @@ app.post(
     }
 );
 
-
 /* =====================================================
    MEMBER - GET NOTIFICATIONS
    ===================================================== */
@@ -3125,14 +2883,11 @@ app.get(
                 title,
                 message,
                 created_at
-
             FROM notifications
-
             ORDER BY
                 created_at DESC,
                 id DESC
             `,
-
             [],
 
             function (
@@ -3154,12 +2909,9 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
-
                     notifications:
                         notifications || []
-
                 });
 
             }
@@ -3168,6 +2920,24 @@ app.get(
     }
 );
 
+/* =====================================================
+   OPTIONAL ADMIN PROFILE PAGE
+   ===================================================== */
+
+app.get(
+    "/admin-profile.html",
+    requireAdmin,
+    function (req, res) {
+
+        res.sendFile(
+            path.join(
+                frontendPath,
+                "admin-profile.html"
+            )
+        );
+
+    }
+);
 
 /* =====================================================
    START SERVER
