@@ -1,7 +1,7 @@
 /* =====================================================
    FRENCH CLUB - MEMBER DASHBOARD
    ===================================================== */
-
+git add frontend/js/member-dashboard.js
 document.addEventListener("DOMContentLoaded", function () {
 
 console.log("MEMBER DASHBOARD JS LOADED");
