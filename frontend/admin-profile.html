@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>My Admin Profile - Nusrat French Club</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+<body>
+
+    <header>
+
+        <h1>Nusrat French Club</h1>
+
+        <p>My Admin Profile</p>
+
+    </header>
+
+
+    <main>
+
+        <section>
+
+            <h2>My Profile</h2>
+
+            <div>
+
+                <img
+                    id="profilePicture"
+                    src=""
+                    alt="Profile picture"
+                    width="150"
+                    height="150"
+                >
+
+            </div>
+
+
+            <div>
+
+                <label for="profilePictureInput">
+                    Profile Picture
+                </label>
+
+                <input
+                    type="file"
+                    id="profilePictureInput"
+                    accept="image/png,image/jpeg,image/webp"
+                >
+
+            </div>
+
+
+            <div>
+
+                <label for="name">
+                    Full Name
+                </label>
+
+                <input
+                    type="text"
+                    id="name"
+                    readonly
+                >
+
+            </div>
+
+
+            <div>
+
+                <label for="grNumber">
+                    GR Number
+                </label>
+
+                <input
+                    type="text"
+                    id="grNumber"
+                    readonly
+                >
+
+            </div>
+
+
+            <div>
+
+                <label for="className">
+                    Class
+                </label>
+
+                <input
+                    type="text"
+                    id="className"
+                    readonly
+                >
+
+            </div>
+
+
+            <div>
+
+                <label for="phone">
+                    Phone Number
+                </label>
+
+                <input
+                    type="text"
+                    id="phone"
+                >
+
+            </div>
+
+
+            <div>
+
+                <label for="email">
+                    Email
+                </label>
+
+                <input
+                    type="email"
+                    id="email"
+                >
+
+            </div>
+
+
+            <div>
+
+                <label for="dateJoined">
+                    Date Joined
+                </label>
+
+                <input
+                    type="text"
+                    id="dateJoined"
+                    readonly
+                >
+
+            </div>
+
+
+            <div>
+
+                <label for="role">
+                    Role
+                </label>
+
+                <input
+                    type="text"
+                    id="role"
+                    readonly
+                >
+
+            </div>
+
+
+            <button
+                type="button"
+                id="saveProfile"
+            >
+                Save Profile
+            </button>
+
+
+            <button
+                type="button"
+                id="changePassword"
+            >
+                Change Password
+            </button>
+
+
+            <button
+                type="button"
+                id="backToDashboard"
+            >
+                Back to Dashboard
+            </button>
+
+
+            <p id="profileMessage"></p>
+
+        </section>
+
+    </main>
+
+
+    <script src="js/admin-profile.js"></script>
+
+</body>
+
+</html>
