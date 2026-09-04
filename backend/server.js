@@ -2112,6 +2112,67 @@ app.get(
     }
 );
 
+/* =====================================================
+   ADMIN - PROMOTE MEMBERS TO ADMIN
+   ===================================================== */
+
+app.post(
+    "/api/admin/promote-members",
+    requireAdmin,
+    function (req, res) {
+
+        const grNumbers = Array.isArray(req.body.grNumbers)
+            ? req.body.grNumbers
+            : [];
+
+        if (grNumbers.length === 0) {
+            return res.status(400).json({
+                message: "No members selected."
+            });
+        }
+
+        const cleanGRNumbers = grNumbers
+            .map(function (gr) {
+                return String(gr).trim().toUpperCase();
+            })
+            .filter(Boolean);
+
+        const placeholders = cleanGRNumbers
+            .map(function () {
+                return "?";
+            })
+            .join(",");
+
+        db.run(
+            `
+            UPDATE members
+            SET role = 'admin'
+            WHERE gr_number IN (${placeholders})
+            `,
+            cleanGRNumbers,
+            function (error) {
+
+                if (error) {
+                    console.error(
+                        "Promote members error:",
+                        error
+                    );
+
+                    return res.status(500).json({
+                        message: "Unable to promote members."
+                    });
+                }
+
+                return res.status(200).json({
+                    message: "Members promoted successfully.",
+                    updated: this.changes
+                });
+
+            }
+        );
+
+    }
+);
 
 /* =====================================================
    ADMIN - GET PAYMENT MEMBERS
