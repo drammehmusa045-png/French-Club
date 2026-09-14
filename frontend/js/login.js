@@ -1,6 +1,6 @@
 /* =========================================
-   FRENCH CLUB
-   MEMBER LOGIN
+   NUSRATFRENCH CLUB
+   MEMBER / ADMIN / TEACHER COORDINATOR LOGIN
    ========================================= */
 
 const loginForm = document.getElementById("loginForm");
@@ -28,8 +28,11 @@ loginForm.addEventListener("submit", async function (event) {
     }
 
 
-    loginMessage.textContent = "Logging in...";
-    loginMessage.style.color = "blue";
+    loginMessage.textContent =
+        "Logging in...";
+
+    loginMessage.style.color =
+        "blue";
 
 
     try {
@@ -51,7 +54,8 @@ loginForm.addEventListener("submit", async function (event) {
         );
 
 
-        const data = await response.json();
+        const data =
+            await response.json();
 
 
         if (!response.ok) {
@@ -59,13 +63,67 @@ loginForm.addEventListener("submit", async function (event) {
             loginMessage.textContent =
                 data.message || "Login failed.";
 
-            loginMessage.style.color = "red";
+            loginMessage.style.color =
+                "red";
 
             return;
         }
 
 
-        /* SAVE MEMBER INFORMATION */
+        /* =========================================
+           VERIFY LOGIN RESPONSE
+        ========================================= */
+
+        if (!data.member) {
+
+            console.error(
+                "Login response is missing member information:",
+                data
+            );
+
+            loginMessage.textContent =
+                "Login response was invalid. Please contact the club administrator.";
+
+            loginMessage.style.color =
+                "red";
+
+            return;
+        }
+
+
+        /* =========================================
+           GET ROLE FROM SERVER RESPONSE
+           
+           The backend explicitly returns:
+           
+           role: member.role || "member"
+           
+           Therefore use data.role as the primary
+           source instead of relying only on
+           data.member.role.
+        ========================================= */
+
+        const role =
+            String(
+                data.role ||
+                data.member.role ||
+                "member"
+            )
+                .trim()
+                .toLowerCase();
+
+
+        /* =========================================
+           KEEP THE ROLE CONSISTENT
+        ========================================= */
+
+        data.member.role =
+            role;
+
+
+        /* =========================================
+           SAVE MEMBER INFORMATION
+        ========================================= */
 
         localStorage.setItem(
             "frenchClubMember",
@@ -73,29 +131,72 @@ loginForm.addEventListener("submit", async function (event) {
         );
 
 
+        /* =========================================
+           DEBUG LOGIN ROLE
+        ========================================= */
+
+        console.log(
+            "Login successful.",
+            {
+                grNumber: data.member.gr_number,
+                name: data.member.name,
+                role: role,
+                status: data.member.status
+            }
+        );
+
+
         loginMessage.textContent =
             "Login successful! Redirecting...";
 
-        loginMessage.style.color = "green";
+        loginMessage.style.color =
+            "green";
 
 
-        /* REDIRECT */
+        /* =========================================
+           REDIRECT BASED ON ROLE
+        ========================================= */
 
-       setTimeout(function () {
+        setTimeout(function () {
 
-    if (data.member.role === "admin") {
+            /* =====================================
+               ADMIN
+            ===================================== */
 
-        window.location.href =
-            "/admin-dashboard.html";
+            if (role === "admin") {
 
-    } else {
+                window.location.href =
+                    "/admin-dashboard.html";
 
-        window.location.href =
-            "/member-dashboard.html";
+                return;
+            }
 
-    }
 
-}, 500);
+            /* =====================================
+               TEACHER COORDINATOR
+            ===================================== */
+
+            if (
+                role ===
+                "teacher_coordinator"
+            ) {
+
+                window.location.href =
+                    "/teacher-coordinator-dashboard.html";
+
+                return;
+            }
+
+
+            /* =====================================
+               NORMAL MEMBER
+            ===================================== */
+
+            window.location.href =
+                "/member-dashboard.html";
+
+        }, 500);
+
 
     } catch (error) {
 
@@ -107,7 +208,8 @@ loginForm.addEventListener("submit", async function (event) {
         loginMessage.textContent =
             "Unable to connect to the server. Please try again.";
 
-        loginMessage.style.color = "red";
+        loginMessage.style.color =
+            "red";
 
     }
 

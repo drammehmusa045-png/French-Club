@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>NUSRAT FRENCH CLUB — Teacher Coordinator</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/teacher-coordinator-dashboard.css"
+    >
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================
+     SIDEBAR
+========================================== -->
+
+<aside class="sidebar">
+
+    <div class="brand">
+
+        <h2>NUSRAT FRENCH CLUB</h2>
+
+    </div>
+
+
+    <nav>
+
+        <button
+            type="button"
+            class="nav-item active"
+            data-section="overview"
+        >
+            🏠 Overview
+        </button>
+
+
+        <button
+            type="button"
+            class="nav-item"
+            data-section="members"
+        >
+            👥 Members
+        </button>
+
+
+        <button
+            type="button"
+            class="nav-item"
+            data-section="admins"
+        >
+            👨‍💼 Administrators
+        </button>
+
+
+        <button
+            type="button"
+            class="nav-item"
+            data-section="meetings"
+        >
+            📅 Meetings
+        </button>
+
+    </nav>
+
+
+    <button
+        type="button"
+        id="logoutBtn"
+        class="logout-btn"
+    >
+        🚪 Logout
+    </button>
+
+</aside>
+
+
+
+<!-- =========================================
+     MAIN CONTENT
+========================================== -->
+
+<main class="main-content">
+
+
+    <!-- =========================================
+         TOP BAR
+    ========================================== -->
+
+    <header class="topbar">
+
+        <div>
+
+            <h1>
+                Teacher Coordinator Dashboard
+            </h1>
+
+            <p id="welcomeMessage">
+                Welcome to NUSRAT FRENCH CLUB
+            </p>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =========================================
+         OVERVIEW
+    ========================================== -->
+
+    <section
+        id="overview"
+        class="dashboard-section active"
+    >
+
+        <div class="section-heading">
+
+            <h2>Overview</h2>
+
+            <p>
+                Manage the French Club from one place.
+            </p>
+
+        </div>
+
+
+        <div class="stats-grid">
+
+
+            <div class="stat-card">
+
+                <span class="stat-icon">
+                    👥
+                </span>
+
+                <div>
+
+                    <h3 id="totalMembers">
+                        0
+                    </h3>
+
+                    <p>
+                        Total Members
+                    </p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="stat-card">
+
+                <span class="stat-icon">
+                    🟢
+                </span>
+
+                <div>
+
+                    <h3 id="activeMembers">
+                        0
+                    </h3>
+
+                    <p>
+                        Active Members
+                    </p>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="stat-card">
+
+                <span class="stat-icon">
+                    👨‍💼
+                </span>
+
+                <div>
+
+                    <h3 id="totalAdmins">
+                        0
+                    </h3>
+
+                    <p>
+                        Administrators
+                    </p>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+
+        <div class="welcome-card">
+
+            <h2>
+                NUSRAT FRENCH CLUB
+            </h2>
+
+
+            <p>
+                As Teacher Coordinator, you can manage
+                members and administrators while keeping
+                the club organized.
+            </p>
+
+
+            <div class="permission-list">
+
+                <div>
+                    ✅ Register members
+                </div>
+
+                <div>
+                    ✅ Remove members
+                </div>
+
+                <div>
+                    ✅ Promote members to administrators
+                </div>
+
+                <div>
+                    ✅ View administrators
+                </div>
+
+                <div>
+                    ✅ Remove administrators
+                </div>
+
+                <div>
+                    ✅ View meetings
+                </div>
+
+                <div>
+                    🚫 Attendance marking is not available
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================
+         MEMBERS
+    ========================================== -->
+
+    <section
+        id="members"
+        class="dashboard-section"
+    >
+
+        <div class="section-heading">
+
+
+            <div>
+
+                <h2>
+                    Club Members
+                </h2>
+
+                <p>
+                    View and manage registered members.
+                </p>
+
+            </div>
+
+
+            <button
+                type="button"
+                id="refreshMembersBtn"
+                class="primary-btn"
+            >
+                🔄 Refresh
+            </button>
+
+
+        </div>
+
+
+
+        <!-- MEMBER SEARCH -->
+
+        <div class="member-search">
+
+            <input
+                type="search"
+                id="memberSearch"
+                placeholder="Search by name, GR number or phone..."
+                autocomplete="off"
+            >
+
+        </div>
+
+
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>ID</th>
+
+                        <th>Name</th>
+
+                        <th>GR Number</th>
+
+                        <th>Status</th>
+
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="membersTableBody">
+
+                    <tr>
+
+                        <td colspan="5">
+                            Loading members...
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================
+         ADMINISTRATORS
+    ========================================== -->
+
+    <section
+        id="admins"
+        class="dashboard-section"
+    >
+
+        <div class="section-heading">
+
+
+            <div>
+
+                <h2>
+                    Administrators
+                </h2>
+
+                <p>
+                    View and manage system administrators.
+                </p>
+
+            </div>
+
+
+            <button
+                type="button"
+                id="refreshAdminsBtn"
+                class="primary-btn"
+            >
+                🔄 Refresh
+            </button>
+
+
+        </div>
+
+
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>ID</th>
+
+                        <th>Name</th>
+
+                        <th>GR Number</th>
+
+                        <th>Role</th>
+
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="adminsTableBody">
+
+                    <tr>
+
+                        <td colspan="5">
+                            Loading administrators...
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================
+         MEETINGS
+    ========================================== -->
+
+    <section
+        id="meetings"
+        class="dashboard-section"
+    >
+
+        <div class="section-heading">
+
+
+            <div>
+
+                <h2>
+                    Club Meetings
+                </h2>
+
+                <p>
+                    View meetings created for the French Club.
+                </p>
+
+            </div>
+
+
+            <button
+                type="button"
+                id="refreshMeetingsBtn"
+                class="primary-btn"
+            >
+                🔄 Refresh
+            </button>
+
+
+        </div>
+
+
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>ID</th>
+
+                        <th>Title</th>
+
+                        <th>Meeting Date</th>
+
+                        <th>Description</th>
+
+                        <th>Created</th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="meetingsTableBody">
+
+                    <tr>
+
+                        <td colspan="5">
+                            Loading meetings...
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+</main>
+
+
+
+<!-- =========================================
+     JAVASCRIPT
+========================================== -->
+
+<script src="/js/teacher-coordinator-dashboard.js"></script>
+
+
+</body>
+
+</html>
