@@ -1,4 +1,4 @@
-require("dotenv").config();
+﻿require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
@@ -12,10 +12,9 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-
 /* =====================================================
-   MIDDLEWARE
-   ===================================================== */
+MIDDLEWARE
+===================================================== */
 
 app.use(cors());
 
@@ -25,10 +24,9 @@ app.use(
     })
 );
 
-
 /* =====================================================
-   FRONTEND
-   ===================================================== */
+FRONTEND
+===================================================== */
 
 const frontendPath = path.join(
     __dirname,
@@ -45,10 +43,9 @@ app.use(
     express.static(frontendPath)
 );
 
-
 /* =====================================================
-   PROFILE PICTURES
-   ===================================================== */
+PROFILE PICTURES
+===================================================== */
 
 const profilePicturesPath = path.join(
     __dirname,
@@ -71,16 +68,15 @@ app.use(
     express.static(profilePicturesPath)
 );
 
-
 /* =====================================================
-   HOME
-   ===================================================== */
+HOME
+===================================================== */
 
 app.get(
     "/",
     function (req, res) {
 
-        res.sendFile(
+        return res.sendFile(
             path.join(
                 frontendPath,
                 "index.html"
@@ -90,10 +86,9 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   API TEST
-   ===================================================== */
+API TEST
+===================================================== */
 
 app.get(
     "/api",
@@ -109,12 +104,11 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   ADMIN SECURITY
-   ===================================================== */
+HELPER - GET MANAGEMENT USER
+===================================================== */
 
-function requireAdmin(req, res, next) {
+function getManagementUser(req, res, callback) {
 
     const grNumber =
         String(
@@ -123,23 +117,23 @@ function requireAdmin(req, res, next) {
             .trim()
             .toUpperCase();
 
-
     if (!grNumber) {
 
         return res.status(401).json({
 
             message:
-                "Administrator login required."
+                "Management login required."
 
         });
 
     }
 
-
     db.get(
         `
         SELECT
             id,
+            name,
+            gr_number,
             role,
             status
         FROM members
@@ -156,7 +150,7 @@ function requireAdmin(req, res, next) {
             if (error) {
 
                 console.error(
-                    "Admin security database error:",
+                    "Management security database error:",
                     error
                 );
 
@@ -169,30 +163,16 @@ function requireAdmin(req, res, next) {
 
             }
 
-
             if (!member) {
 
                 return res.status(403).json({
 
                     message:
-                        "Administrator privileges are required."
+                        "Management privileges are required."
 
                 });
 
             }
-
-
-            if (member.role !== "admin") {
-
-                return res.status(403).json({
-
-                    message:
-                        "Administrator privileges are required."
-
-                });
-
-            }
-
 
             if (
                 member.status &&
@@ -202,12 +182,48 @@ function requireAdmin(req, res, next) {
                 return res.status(403).json({
 
                     message:
-                        "This administrator account is inactive."
+                        "This management account is inactive."
 
                 });
 
             }
 
+            callback(member);
+
+        }
+    );
+
+}
+
+/* =====================================================
+ADMIN SECURITY
+
+ONLY ACTIVE ADMINISTRATORS CAN ACCESS
+ADMIN-ONLY ROUTES.
+===================================================== */
+
+function requireAdmin(req, res, next) {
+
+    getManagementUser(
+        req,
+        res,
+        function (member) {
+
+            if (
+                member.role !== "admin"
+            ) {
+
+                return res.status(403).json({
+
+                    message:
+                        "Administrator privileges are required."
+
+                });
+
+            }
+
+            req.managementUser =
+                member;
 
             next();
 
@@ -216,10 +232,95 @@ function requireAdmin(req, res, next) {
 
 }
 
+/* =====================================================
+TEACHER COORDINATOR SECURITY
+
+ONLY THE ACTIVE TEACHER COORDINATOR CAN ACCESS
+TEACHER COORDINATOR-ONLY ROUTES.
+===================================================== */
+
+function requireTeacherCoordinator(
+    req,
+    res,
+    next
+) {
+
+    getManagementUser(
+        req,
+        res,
+        function (member) {
+
+            if (
+                member.role !==
+                "teacher_coordinator"
+            ) {
+
+                return res.status(403).json({
+
+                    message:
+                        "Only the Teacher Coordinator can perform this action."
+
+                });
+
+            }
+
+            req.managementUser =
+                member;
+
+            next();
+
+        }
+    );
+
+}
 
 /* =====================================================
-   MEMBER REGISTRATION
-   ===================================================== */
+MANAGEMENT ACCESS SECURITY
+
+ALLOWS:
+- ADMIN
+- TEACHER COORDINATOR
+
+===================================================== */
+
+function requireManagementAccess(
+    req,
+    res,
+    next
+) {
+
+    getManagementUser(
+        req,
+        res,
+        function (member) {
+
+            if (
+                member.role !== "admin" &&
+                member.role !== "teacher_coordinator"
+            ) {
+
+                return res.status(403).json({
+
+                    message:
+                        "Management privileges are required."
+
+                });
+
+            }
+
+            req.managementUser =
+                member;
+
+            next();
+
+        }
+    );
+
+}
+
+/* =====================================================
+MEMBER REGISTRATION
+===================================================== */
 
 app.post(
     "/api/auth/register",
@@ -259,7 +360,6 @@ app.post(
                     req.body.password || ""
                 );
 
-
             if (
                 !name ||
                 !grNumber ||
@@ -277,8 +377,9 @@ app.post(
 
             }
 
-
-            if (password.length < 6) {
+            if (
+                password.length < 6
+            ) {
 
                 return res.status(400).json({
 
@@ -289,10 +390,10 @@ app.post(
 
             }
 
-
             db.get(
                 `
-                SELECT id
+                SELECT
+                    id
                 FROM members
                 WHERE gr_number = ?
                 `,
@@ -320,7 +421,6 @@ app.post(
 
                     }
 
-
                     if (existingMember) {
 
                         return res.status(409).json({
@@ -332,7 +432,6 @@ app.post(
 
                     }
 
-
                     try {
 
                         const hashedPassword =
@@ -341,10 +440,8 @@ app.post(
                                 10
                             );
 
-
                         const dateJoined =
                             new Date().toISOString();
-
 
                         db.run(
                             `
@@ -361,6 +458,7 @@ app.post(
                                 role
                             )
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            RETURNING id
                             `,
 
                             [
@@ -395,12 +493,10 @@ app.post(
 
                                 }
 
-
                                 console.log(
                                     "New member registered:",
                                     grNumber
                                 );
-
 
                                 return res.status(201).json({
 
@@ -419,7 +515,6 @@ app.post(
                         );
 
                     }
-
                     catch (passwordError) {
 
                         console.error(
@@ -440,7 +535,6 @@ app.post(
             );
 
         }
-
         catch (error) {
 
             console.error(
@@ -460,10 +554,10 @@ app.post(
     }
 );
 
-
 /* =====================================================
-   MEMBER / ADMIN LOGIN
-   ===================================================== */
+LOGIN
+MEMBER / ADMIN / TEACHER COORDINATOR
+===================================================== */
 
 app.post(
     "/api/auth/login",
@@ -483,7 +577,6 @@ app.post(
                     req.body.password || ""
                 );
 
-
             if (
                 !grNumber ||
                 !password
@@ -497,7 +590,6 @@ app.post(
                 });
 
             }
-
 
             db.get(
                 `
@@ -529,7 +621,6 @@ app.post(
 
                     }
 
-
                     if (!member) {
 
                         return res.status(401).json({
@@ -541,7 +632,6 @@ app.post(
 
                     }
 
-
                     try {
 
                         const passwordCorrect =
@@ -549,7 +639,6 @@ app.post(
                                 password,
                                 member.password
                             );
-
 
                         if (!passwordCorrect) {
 
@@ -561,7 +650,6 @@ app.post(
                             });
 
                         }
-
 
                         if (
                             member.status &&
@@ -577,9 +665,7 @@ app.post(
 
                         }
 
-
                         delete member.password;
-
 
                         return res.status(200).json({
 
@@ -595,7 +681,6 @@ app.post(
                         });
 
                     }
-
                     catch (passwordError) {
 
                         console.error(
@@ -616,7 +701,6 @@ app.post(
             );
 
         }
-
         catch (error) {
 
             console.error(
@@ -636,11 +720,10 @@ app.post(
     }
 );
 
-
 /* =====================================================
-   ADMIN - GET ALL MEMBERS
-   WITH ATTENDANCE PERCENTAGE
-   ===================================================== */
+ADMIN - GET ALL MEMBERS
+WITH ATTENDANCE PERCENTAGE
+===================================================== */
 
 app.get(
     "/api/admin/members",
@@ -727,7 +810,6 @@ app.get(
 
                 }
 
-
                 const processedMembers =
                     (members || []).map(
                         function (member) {
@@ -747,9 +829,8 @@ app.get(
                                     member.recorded_absent_count || 0
                                 );
 
-
-                            let attendancePercentage = 0;
-
+                            let attendancePercentage =
+                                0;
 
                             if (
                                 totalMeetings > 0
@@ -762,7 +843,6 @@ app.get(
                                     ) * 100;
 
                             }
-
 
                             return {
 
@@ -788,13 +868,15 @@ app.get(
                                     member.date_joined,
 
                                 status:
-                                    member.status || "Active",
+                                    member.status ||
+                                    "Active",
 
                                 role:
                                     member.role,
 
                                 profile_picture:
-                                    member.profile_picture || null,
+                                    member.profile_picture ||
+                                    null,
 
                                 total_meetings:
                                     totalMeetings,
@@ -815,7 +897,6 @@ app.get(
                         }
                     );
 
-
                 return res.status(200).json({
 
                     members:
@@ -829,10 +910,1032 @@ app.get(
     }
 );
 
+/* =====================================================
+TEACHER COORDINATOR - GET MEMBERS
+===================================================== */
+
+app.get(
+    "/api/teacher-coordinator/members",
+    requireTeacherCoordinator,
+    function (req, res) {
+
+        db.all(
+            `
+            SELECT
+                id,
+                name,
+                gr_number,
+                class_name,
+                phone,
+                email,
+                date_joined,
+                status,
+                role,
+                profile_picture
+            FROM members
+            WHERE role IN ('admin', 'member')
+            ORDER BY id DESC
+            `,
+
+            [],
+
+            function (
+                error,
+                members
+            ) {
+
+                if (error) {
+
+                    console.error(
+                        "Teacher Coordinator member lookup error:",
+                        error
+                    );
+
+                    return res.status(500).json({
+
+                        message:
+                            "Unable to load members."
+
+                    });
+
+                }
+
+                return res.status(200).json({
+
+                    members:
+                        members || []
+
+                });
+
+            }
+        );
+
+    }
+);
 
 /* =====================================================
-   ADMIN - EDIT MEMBER
-   ===================================================== */
+TEACHER COORDINATOR - MEMBER COUNT
+===================================================== */
+
+app.get(
+    "/api/teacher-coordinator/member-count",
+    requireTeacherCoordinator,
+    function (req, res) {
+
+        db.get(
+            `
+            SELECT
+                COUNT(*) AS total
+            FROM members
+            WHERE role IN ('member', 'admin')
+            `,
+
+            [],
+
+            function (
+                error,
+                result
+            ) {
+
+                if (error) {
+
+                    console.error(
+                        "Teacher Coordinator member count error:",
+                        error
+                    );
+
+                    return res.status(500).json({
+
+                        message:
+                            "Unable to load member count."
+
+                    });
+
+                }
+
+                return res.status(200).json({
+
+                    total:
+                        result
+                            ? Number(
+                                result.total || 0
+                            )
+                            : 0
+
+                });
+
+            }
+        );
+
+    }
+);
+
+/* =====================================================
+ADMIN - GET ALL MEETINGS
+===================================================== */
+
+app.get(
+    "/api/admin/meetings",
+    requireAdmin,
+    function (req, res) {
+
+        db.all(
+            `
+            SELECT
+                id,
+                title,
+                meeting_date,
+                description,
+                created_at
+            FROM meetings
+            ORDER BY
+                meeting_date DESC,
+                id DESC
+            `,
+
+            [],
+
+            function (
+                error,
+                meetings
+            ) {
+
+                if (error) {
+
+                    console.error(
+                        "Admin meetings lookup error:",
+                        error
+                    );
+
+                    return res.status(500).json({
+
+                        message:
+                            "Unable to load meetings."
+
+                    });
+
+                }
+
+                return res.status(200).json({
+
+                    meetings:
+                        meetings || []
+
+                });
+
+            }
+        );
+
+    }
+);
+
+/* =====================================================
+ADMIN - CREATE MEETING
+===================================================== */
+
+app.post(
+    "/api/admin/meetings",
+    requireAdmin,
+    function (req, res) {
+
+        const title =
+            String(
+                req.body.title || ""
+            ).trim();
+
+        const meetingDate =
+            String(
+                req.body.meetingDate || ""
+            ).trim();
+
+        const description =
+            req.body.description
+                ? String(
+                    req.body.description
+                ).trim()
+                : null;
+
+        if (!title) {
+
+            return res.status(400).json({
+
+                message:
+                    "Meeting title is required."
+
+            });
+
+        }
+
+        if (!meetingDate) {
+
+            return res.status(400).json({
+
+                message:
+                    "Meeting date is required."
+
+            });
+
+        }
+
+        db.run(
+            `
+            INSERT INTO meetings
+            (
+                title,
+                meeting_date,
+                description,
+                created_at
+            )
+            VALUES (?, ?, ?, ?)
+            RETURNING id
+            `,
+
+            [
+                title,
+                meetingDate,
+                description || null,
+                new Date().toISOString()
+            ],
+
+            function (error) {
+
+                if (error) {
+
+                    console.error(
+                        "Create meeting database error:",
+                        error
+                    );
+
+                    return res.status(500).json({
+
+                        message:
+                            "Unable to create meeting."
+
+                    });
+
+                }
+
+                return res.status(201).json({
+
+                    message:
+                        "Meeting created successfully.",
+
+                    meetingId:
+                        this.lastID
+
+                });
+
+            }
+        );
+
+    }
+);
+
+/* =====================================================
+ADMIN - EDIT MEETING
+===================================================== */
+
+app.put(
+    "/api/admin/meetings/:id",
+    requireAdmin,
+    function (req, res) {
+
+        const meetingId =
+            Number(
+                req.params.id
+            );
+
+        const title =
+            String(
+                req.body.title || ""
+            ).trim();
+
+        const meetingDate =
+            String(
+                req.body.meetingDate || ""
+            ).trim();
+
+        const description =
+            req.body.description
+                ? String(
+                    req.body.description
+                ).trim()
+                : null;
+
+        if (
+            !Number.isInteger(meetingId) ||
+            meetingId <= 0
+        ) {
+
+            return res.status(400).json({
+
+                message:
+                    "Invalid meeting ID."
+
+            });
+
+        }
+
+        if (!title) {
+
+            return res.status(400).json({
+
+                message:
+                    "Meeting title is required."
+
+            });
+
+        }
+
+        if (!meetingDate) {
+
+            return res.status(400).json({
+
+                message:
+                    "Meeting date is required."
+
+            });
+
+        }
+
+        db.get(
+            `
+            SELECT
+                id
+            FROM meetings
+            WHERE id = ?
+            `,
+
+            [meetingId],
+
+            function (
+                findError,
+                meeting
+            ) {
+
+                if (findError) {
+
+                    console.error(
+                        "Find meeting before edit error:",
+                        findError
+                    );
+
+                    return res.status(500).json({
+
+                        message:
+                            "Unable to find meeting."
+
+                    });
+
+                }
+
+                if (!meeting) {
+
+                    return res.status(404).json({
+
+                        message:
+                            "Meeting not found."
+
+                    });
+
+                }
+
+                db.run(
+                    `
+                    UPDATE meetings
+                    SET
+                        title = ?,
+                        meeting_date = ?,
+                        description = ?
+                    WHERE id = ?
+                    `,
+
+                    [
+                        title,
+                        meetingDate,
+                        description || null,
+                        meetingId
+                    ],
+
+                    function (
+                        updateError
+                    ) {
+
+                        if (updateError) {
+
+                            console.error(
+                                "Update meeting database error:",
+                                updateError
+                            );
+
+                            return res.status(500).json({
+
+                                message:
+                                    "Unable to update meeting."
+
+                            });
+
+                        }
+
+                        return res.status(200).json({
+
+                            message:
+                                "Meeting updated successfully.",
+
+                            meetingId:
+                                meetingId
+
+                        });
+
+                    }
+                );
+
+            }
+        );
+
+    }
+);
+
+/* =====================================================
+ADMIN - DELETE MEETING
+===================================================== */
+
+app.delete(
+    "/api/admin/meetings/:id",
+    requireAdmin,
+    function (req, res) {
+
+        const meetingId =
+            Number(
+                req.params.id
+            );
+
+        if (
+            !Number.isInteger(meetingId) ||
+            meetingId <= 0
+        ) {
+
+            return res.status(400).json({
+
+                message:
+                    "Invalid meeting ID."
+
+            });
+
+        }
+
+        db.get(
+            `
+            SELECT
+                id,
+                title
+            FROM meetings
+            WHERE id = ?
+            `,
+
+            [meetingId],
+
+            function (
+                findError,
+                meeting
+            ) {
+
+                if (findError) {
+
+                    console.error(
+                        "Find meeting before delete error:",
+                        findError
+                    );
+
+                    return res.status(500).json({
+
+                        message:
+                            "Unable to find meeting."
+
+                    });
+
+                }
+
+                if (!meeting) {
+
+                    return res.status(404).json({
+
+                        message:
+                            "Meeting not found."
+
+                    });
+
+                }
+
+                db.run(
+                    `
+                    DELETE FROM meetings
+                    WHERE id = ?
+                    `,
+
+                    [meetingId],
+
+                    function (
+                        deleteError
+                    ) {
+
+                        if (deleteError) {
+
+                            console.error(
+                                "Delete meeting database error:",
+                                deleteError
+                            );
+
+                            return res.status(500).json({
+
+                                message:
+                                    "Unable to delete meeting."
+
+                            });
+
+                        }
+
+                        return res.status(200).json({
+
+                            message:
+                                "Meeting deleted successfully.",
+
+                            meetingId:
+                                meetingId
+
+                        });
+
+                    }
+                );
+
+            }
+        );
+
+    }
+);
+
+/* =====================================================
+ADMIN - GET MEETING ATTENDANCE
+===================================================== */
+
+app.get(
+    "/api/admin/meetings/:meetingId/attendance",
+    requireAdmin,
+    function (req, res) {
+
+        const meetingId =
+            Number(
+                req.params.meetingId
+            );
+
+        if (
+            !Number.isInteger(meetingId) ||
+            meetingId <= 0
+        ) {
+
+            return res.status(400).json({
+
+                message:
+                    "Invalid meeting ID."
+
+            });
+
+        }
+
+        db.get(
+            `
+            SELECT
+                id,
+                title,
+                meeting_date,
+                description
+            FROM meetings
+            WHERE id = ?
+            `,
+
+            [meetingId],
+
+            function (
+                meetingError,
+                meeting
+            ) {
+
+                if (meetingError) {
+
+                    console.error(
+                        "Find meeting for attendance error:",
+                        meetingError
+                    );
+
+                    return res.status(500).json({
+
+                        message:
+                            "Unable to load meeting."
+
+                    });
+
+                }
+
+                if (!meeting) {
+
+                    return res.status(404).json({
+
+                        message:
+                            "Meeting not found."
+
+                    });
+
+                }
+
+                db.all(
+                    `
+                    SELECT
+                        m.id,
+                        m.name,
+                        m.gr_number,
+                        m.class_name,
+                        m.role,
+
+                        COALESCE(
+                            a.status,
+                            'Absent'
+                        ) AS status
+
+                    FROM members m
+
+                    LEFT JOIN attendance a
+                        ON a.member_id = m.id
+                        AND a.meeting_id = ?
+
+                    WHERE
+                        m.role IN ('member', 'admin')
+
+                    ORDER BY
+                        m.name ASC,
+                        m.id ASC
+                    `,
+
+                    [meetingId],
+
+                    function (
+                        attendanceError,
+                        members
+                    ) {
+
+                        if (attendanceError) {
+
+                            console.error(
+                                "Load meeting attendance error:",
+                                attendanceError
+                            );
+
+                            return res.status(500).json({
+
+                                message:
+                                    "Unable to load attendance."
+
+                            });
+
+                        }
+
+                        return res.status(200).json({
+
+                            meeting:
+                                meeting,
+
+                            members:
+                                members || []
+
+                        });
+
+                    }
+                );
+
+            }
+        );
+
+    }
+);
+
+/* =====================================================
+ADMIN - SAVE MEETING ATTENDANCE
+
+ONLY ADMIN CAN MARK ATTENDANCE.
+
+TEACHER COORDINATOR CANNOT USE THIS ROUTE.
+===================================================== */
+
+app.post(
+    "/api/admin/meetings/:meetingId/attendance",
+    requireAdmin,
+    function (req, res) {
+
+        const meetingId =
+            Number(
+                req.params.meetingId
+            );
+
+        const memberId =
+            Number(
+                req.body.memberId
+            );
+
+        const status =
+            String(
+                req.body.status || ""
+            ).trim();
+
+        if (
+            !Number.isInteger(meetingId) ||
+            meetingId <= 0
+        ) {
+
+            return res.status(400).json({
+
+                message:
+                    "Invalid meeting ID."
+
+            });
+
+        }
+
+        if (
+            !Number.isInteger(memberId) ||
+            memberId <= 0
+        ) {
+
+            return res.status(400).json({
+
+                message:
+                    "Invalid member ID."
+
+            });
+
+        }
+
+        if (
+            status !== "Present" &&
+            status !== "Absent"
+        ) {
+
+            return res.status(400).json({
+
+                message:
+                    "Invalid attendance status."
+
+            });
+
+        }
+
+        db.get(
+            `
+            SELECT
+                id
+            FROM meetings
+            WHERE id = ?
+            `,
+
+            [meetingId],
+
+            function (
+                meetingError,
+                meeting
+            ) {
+
+                if (meetingError) {
+
+                    console.error(
+                        "Find meeting before attendance save error:",
+                        meetingError
+                    );
+
+                    return res.status(500).json({
+
+                        message:
+                            "Unable to find meeting."
+
+                    });
+
+                }
+
+                if (!meeting) {
+
+                    return res.status(404).json({
+
+                        message:
+                            "Meeting not found."
+
+                    });
+
+                }
+
+                db.get(
+                    `
+                    SELECT
+                        id,
+                        name,
+                        role
+                    FROM members
+                    WHERE id = ?
+                    `,
+
+                    [memberId],
+
+                    function (
+                        memberError,
+                        member
+                    ) {
+
+                        if (memberError) {
+
+                            console.error(
+                                "Find member before attendance save error:",
+                                memberError
+                            );
+
+                            return res.status(500).json({
+
+                                message:
+                                    "Unable to find member."
+
+                            });
+
+                        }
+
+                        if (!member) {
+
+                            return res.status(404).json({
+
+                                message:
+                                    "Member not found."
+
+                            });
+
+                        }
+
+                        if (
+                            member.role !== "member" &&
+                            member.role !== "admin"
+                        ) {
+
+                            return res.status(400).json({
+
+                                message:
+                                    "Only club members and administrators can have attendance marked."
+
+                            });
+
+                        }
+
+                        const markedAt =
+                            new Date().toISOString();
+
+                        db.run(
+                            `
+                            INSERT INTO attendance
+                            (
+                                meeting_id,
+                                member_id,
+                                status,
+                                marked_at
+                            )
+                            VALUES (?, ?, ?, ?)
+
+                            ON CONFLICT
+                            (
+                                meeting_id,
+                                member_id
+                            )
+
+                            DO UPDATE SET
+                                status = EXCLUDED.status,
+                                marked_at = EXCLUDED.marked_at
+                            `,
+
+                            [
+                                meetingId,
+                                memberId,
+                                status,
+                                markedAt
+                            ],
+
+                            function (
+                                saveError
+                            ) {
+
+                                if (saveError) {
+
+                                    console.error(
+                                        "Save attendance database error:",
+                                        saveError
+                                    );
+
+                                    return res.status(500).json({
+
+                                        message:
+                                            "Unable to save attendance."
+
+                                    });
+
+                                }
+
+                                return res.status(200).json({
+
+                                    message:
+                                        "Attendance saved successfully.",
+
+                                    meetingId:
+                                        meetingId,
+
+                                    memberId:
+                                        memberId,
+
+                                    status:
+                                        status
+
+                                });
+
+                            }
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+    }
+);
+
+/* =====================================================
+TEACHER COORDINATOR - GET MEETINGS
+===================================================== */
+
+app.get(
+    "/api/teacher-coordinator/meetings",
+    requireTeacherCoordinator,
+    function (req, res) {
+
+        db.all(
+            `
+            SELECT
+                id,
+                title,
+                meeting_date,
+                description,
+                created_at
+            FROM meetings
+            ORDER BY
+                meeting_date DESC,
+                id DESC
+            `,
+
+            [],
+
+            function (
+                error,
+                meetings
+            ) {
+
+                if (error) {
+
+                    console.error(
+                        "Teacher Coordinator meetings lookup error:",
+                        error
+                    );
+
+                    return res.status(500).json({
+
+                        message:
+                            "Unable to load meetings."
+
+                    });
+
+                }
+
+                return res.status(200).json({
+
+                    meetings:
+                        meetings || []
+
+                });
+
+            }
+        );
+
+    }
+);
+
+/* =====================================================
+ADMIN - EDIT MEMBER
+
+REGULAR ADMIN CANNOT:
+- PROMOTE MEMBER TO ADMIN
+- DEMOTE ADMIN
+- CHANGE ADMIN ROLE
+
+ONLY TEACHER COORDINATOR CAN MANAGE ADMIN ROLES.
+===================================================== */
 
 app.put(
     "/api/admin/members/:id",
@@ -876,14 +1979,6 @@ app.put(
                 req.body.status || "Active"
             ).trim();
 
-        const role =
-            String(
-                req.body.role || "member"
-            )
-                .trim()
-                .toLowerCase();
-
-
         if (
             !Number.isInteger(memberId) ||
             memberId <= 0
@@ -897,7 +1992,6 @@ app.put(
             });
 
         }
-
 
         if (
             !name ||
@@ -915,7 +2009,6 @@ app.put(
 
         }
 
-
         if (
             status !== "Active" &&
             status !== "Inactive"
@@ -930,26 +2023,12 @@ app.put(
 
         }
 
-
-        if (
-            role !== "admin" &&
-            role !== "member"
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "Invalid member role."
-
-            });
-
-        }
-
-
         db.get(
             `
             SELECT
                 id,
+                name,
+                gr_number,
                 role
             FROM members
             WHERE id = ?
@@ -978,7 +2057,6 @@ app.put(
 
                 }
 
-
                 if (!member) {
 
                     return res.status(404).json({
@@ -990,10 +2068,58 @@ app.put(
 
                 }
 
+                /*
+                NEVER accept a role from a regular admin.
+
+                Preserve the existing role.
+                */
+
+                const finalRole =
+                    member.role === "admin"
+                        ? "admin"
+                        : "member";
+
+                /*
+                Regular admins cannot edit the
+                Teacher Coordinator account.
+                */
+
+                if (
+                    member.role ===
+                    "teacher_coordinator"
+                ) {
+
+                    return res.status(403).json({
+
+                        message:
+                            "The Teacher Coordinator account cannot be edited from this section."
+
+                    });
+
+                }
+
+                /*
+                An administrator cannot use this endpoint
+                to demote another administrator.
+                */
+
+                if (
+                    member.role === "admin"
+                ) {
+
+                    return res.status(403).json({
+
+                        message:
+                            "Administrator accounts can only be managed by the Teacher Coordinator."
+
+                    });
+
+                }
 
                 db.get(
                     `
-                    SELECT id
+                    SELECT
+                        id
                     FROM members
                     WHERE
                         gr_number = ?
@@ -1026,7 +2152,6 @@ app.put(
 
                         }
 
-
                         if (duplicate) {
 
                             return res.status(409).json({
@@ -1037,7 +2162,6 @@ app.put(
                             });
 
                         }
-
 
                         db.run(
                             `
@@ -1060,7 +2184,7 @@ app.put(
                                 phone,
                                 email || null,
                                 status,
-                                role,
+                                finalRole,
                                 memberId
                             ],
 
@@ -1083,7 +2207,6 @@ app.put(
                                     });
 
                                 }
-
 
                                 db.get(
                                     `
@@ -1125,7 +2248,6 @@ app.put(
 
                                         }
 
-
                                         return res.status(200).json({
 
                                             message:
@@ -1151,10 +2273,9 @@ app.put(
     }
 );
 
-
 /* =====================================================
-   ADMIN - UPDATE MEMBER PHONE
-   ===================================================== */
+ADMIN - UPDATE MEMBER PHONE
+===================================================== */
 
 app.put(
     "/api/admin/members/:grNumber/phone",
@@ -1173,7 +2294,6 @@ app.put(
                 req.body.phone || ""
             ).trim();
 
-
         if (!grNumber) {
 
             return res.status(400).json({
@@ -1185,7 +2305,6 @@ app.put(
 
         }
 
-
         if (!phone) {
 
             return res.status(400).json({
@@ -1196,7 +2315,6 @@ app.put(
             });
 
         }
-
 
         db.run(
             `
@@ -1228,7 +2346,6 @@ app.put(
 
                 }
 
-
                 if (
                     this.changes === 0
                 ) {
@@ -1241,7 +2358,6 @@ app.put(
                     });
 
                 }
-
 
                 return res.status(200).json({
 
@@ -1262,10 +2378,9 @@ app.put(
     }
 );
 
-
 /* =====================================================
-   ADMIN - RESET MEMBER PASSWORD
-   ===================================================== */
+ADMIN - RESET MEMBER PASSWORD
+===================================================== */
 
 app.post(
     "/api/admin/members/:id/reset-password",
@@ -1284,7 +2399,6 @@ app.post(
                     req.body.newPassword || ""
                 );
 
-
             if (
                 !Number.isInteger(memberId) ||
                 memberId <= 0
@@ -1299,7 +2413,6 @@ app.post(
 
             }
 
-
             if (!newPassword) {
 
                 return res.status(400).json({
@@ -1310,7 +2423,6 @@ app.post(
                 });
 
             }
-
 
             if (
                 newPassword.length < 6
@@ -1324,7 +2436,6 @@ app.post(
                 });
 
             }
-
 
             db.get(
                 `
@@ -1360,7 +2471,6 @@ app.post(
 
                     }
 
-
                     if (!member) {
 
                         return res.status(404).json({
@@ -1372,20 +2482,25 @@ app.post(
 
                     }
 
+                    /*
+                    Management account passwords cannot
+                    be reset by a regular administrator.
+                    */
 
                     if (
-                        member.role === "admin"
+                        member.role === "admin" ||
+                        member.role ===
+                        "teacher_coordinator"
                     ) {
 
                         return res.status(403).json({
 
                             message:
-                                "Administrator passwords cannot be reset from the member management section."
+                                "Management account passwords cannot be reset from the member management section."
 
                         });
 
                     }
-
 
                     try {
 
@@ -1394,7 +2509,6 @@ app.post(
                                 newPassword,
                                 10
                             );
-
 
                         db.run(
                             `
@@ -1428,7 +2542,6 @@ app.post(
 
                                 }
 
-
                                 return res.status(200).json({
 
                                     message:
@@ -1446,7 +2559,6 @@ app.post(
                         );
 
                     }
-
                     catch (passwordError) {
 
                         console.error(
@@ -1467,7 +2579,6 @@ app.post(
             );
 
         }
-
         catch (error) {
 
             console.error(
@@ -1487,21 +2598,20 @@ app.post(
     }
 );
 
-
 /* =====================================================
-   ADMIN - REMOVE MEMBER
-   ===================================================== */
+ADMIN + TEACHER COORDINATOR
+REMOVE REGULAR MEMBER
+===================================================== */
 
 app.delete(
     "/api/admin/members/:id",
-    requireAdmin,
+    requireManagementAccess,
     function (req, res) {
 
         const memberId =
             Number(
                 req.params.id
             );
-
 
         if (
             !Number.isInteger(memberId) ||
@@ -1517,6 +2627,23 @@ app.delete(
 
         }
 
+        const currentUserId =
+            Number(
+                req.managementUser.id
+            );
+
+        if (
+            memberId === currentUserId
+        ) {
+
+            return res.status(403).json({
+
+                message:
+                    "You cannot remove your own account."
+
+            });
+
+        }
 
         db.get(
             `
@@ -1551,7 +2678,6 @@ app.delete(
 
                 }
 
-
                 if (!member) {
 
                     return res.status(404).json({
@@ -1563,20 +2689,22 @@ app.delete(
 
                 }
 
+                /*
+                This endpoint is ONLY for regular members.
+                */
 
                 if (
-                    member.role === "admin"
+                    member.role !== "member"
                 ) {
 
                     return res.status(403).json({
 
                         message:
-                            "Administrators cannot be removed."
+                            "Only regular members can be removed from this section."
 
                     });
 
                 }
-
 
                 db.run(
                     `
@@ -1606,7 +2734,6 @@ app.delete(
 
                         }
 
-
                         db.run(
                             `
                             DELETE FROM subscriptions
@@ -1635,11 +2762,11 @@ app.delete(
 
                                 }
 
-
                                 db.run(
                                     `
                                     DELETE FROM members
                                     WHERE id = ?
+                                    AND role = 'member'
                                     `,
 
                                     [memberId],
@@ -1664,6 +2791,18 @@ app.delete(
 
                                         }
 
+                                        if (
+                                            this.changes === 0
+                                        ) {
+
+                                            return res.status(404).json({
+
+                                                message:
+                                                    "Member was not removed."
+
+                                            });
+
+                                        }
 
                                         return res.status(200).json({
 
@@ -1690,199 +2829,59 @@ app.delete(
     }
 );
 
-
 /* =====================================================
-   ADMIN - PROMOTE MEMBERS TO ADMIN
-   ===================================================== */
-
-app.post(
-    "/api/admin/promote-members",
-    requireAdmin,
-    function (req, res) {
-
-        const grNumbers =
-            Array.isArray(
-                req.body.grNumbers
-            )
-                ? req.body.grNumbers
-                : [];
-
-
-        if (
-            grNumbers.length === 0
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "No members selected."
-
-            });
-
-        }
-
-
-        const cleanGRNumbers =
-            grNumbers
-                .map(
-                    function (gr) {
-
-                        return String(
-                            gr
-                        )
-                            .trim()
-                            .toUpperCase();
-
-                    }
-                )
-                .filter(Boolean);
-
-
-        if (
-            cleanGRNumbers.length === 0
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "No valid GR numbers were provided."
-
-            });
-
-        }
-
-
-        let completed = 0;
-        let updated = 0;
-        let failed = false;
-
-
-        cleanGRNumbers.forEach(
-            function (grNumber) {
-
-                db.run(
-                    `
-                    UPDATE members
-                    SET role = 'admin'
-                    WHERE
-                        gr_number = ?
-                        AND role = 'member'
-                    `,
-
-                    [grNumber],
-
-                    function (error) {
-
-                        if (failed) {
-                            return;
-                        }
-
-
-                        if (error) {
-
-                            failed = true;
-
-                            console.error(
-                                "Promote members error:",
-                                error
-                            );
-
-                            return res.status(500).json({
-
-                                message:
-                                    "Unable to promote members."
-
-                            });
-
-                        }
-
-
-                        updated += this.changes;
-
-                        completed++;
-
-
-                        if (
-                            completed ===
-                            cleanGRNumbers.length
-                        ) {
-
-                            return res.status(200).json({
-
-                                message:
-                                    "Members promoted successfully.",
-
-                                updated:
-                                    updated
-
-                            });
-
-                        }
-
-                    }
-                );
-
-            }
-        );
-
-    }
-);
-
-
-/* =====================================================
-   ADMIN - GET MEETINGS
-   ===================================================== */
+TEACHER COORDINATOR - GET ADMINISTRATORS
+===================================================== */
 
 app.get(
-    "/api/admin/meetings",
-    requireAdmin,
+    "/api/teacher-coordinator/admins",
+    requireTeacherCoordinator,
     function (req, res) {
 
         db.all(
             `
             SELECT
                 id,
-                title,
-                meeting_date,
-                description,
-                created_at
-            FROM meetings
-            ORDER BY
-                meeting_date DESC,
-                id DESC
+                name,
+                gr_number,
+                class_name,
+                phone,
+                email,
+                date_joined,
+                status,
+                role
+            FROM members
+            WHERE role = 'admin'
+            ORDER BY id DESC
             `,
 
             [],
 
             function (
                 error,
-                meetings
+                admins
             ) {
 
                 if (error) {
 
                     console.error(
-                        "Error loading meetings:",
+                        "Administrator lookup error:",
                         error
                     );
 
                     return res.status(500).json({
 
                         message:
-                            "Unable to load meetings.",
-
-                        error:
-                            error.message
+                            "Unable to load administrators."
 
                     });
 
                 }
 
-
                 return res.status(200).json({
 
-                    meetings:
-                        meetings || []
+                    admins:
+                        admins || []
 
                 });
 
@@ -1892,728 +2891,21 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   ADMIN - CREATE MEETING
-   ===================================================== */
-
-app.post(
-    "/api/admin/meetings",
-    requireAdmin,
-    function (req, res) {
-
-        const title =
-            String(
-                req.body.title || ""
-            ).trim();
-
-        const meetingDate =
-            String(
-                req.body.meetingDate || ""
-            ).trim();
-
-        const description =
-            req.body.description
-                ? String(
-                    req.body.description
-                ).trim()
-                : null;
-
-
-        if (
-            !title ||
-            !meetingDate
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "Meeting title and date are required."
-
-            });
-
-        }
-
-
-        db.run(
-            `
-            INSERT INTO meetings
-            (
-                title,
-                meeting_date,
-                description,
-                created_at
-            )
-            VALUES (?, ?, ?, ?)
-            `,
-
-            [
-                title,
-                meetingDate,
-                description,
-                new Date().toISOString()
-            ],
-
-            function (error) {
-
-                if (error) {
-
-                    console.error(
-                        "Error creating meeting:",
-                        error
-                    );
-
-                    return res.status(500).json({
-
-                        message:
-                            "Unable to create meeting.",
-
-                        error:
-                            error.message
-
-                    });
-
-                }
-
-
-                const meetingId =
-                    this.lastID;
-
-
-                db.run(
-                    `
-                    INSERT INTO notifications
-                    (
-                        title,
-                        message,
-                        created_at
-                    )
-                    VALUES (?, ?, ?)
-                    `,
-
-                    [
-                        "New Meeting",
-                        `A new French Club meeting has been scheduled: ${title}.`,
-                        new Date().toISOString()
-                    ],
-
-                    function (
-                        notificationError
-                    ) {
-
-                        if (notificationError) {
-
-                            console.error(
-                                "Meeting notification error:",
-                                notificationError
-                            );
-
-                        }
-
-
-                        return res.status(201).json({
-
-                            message:
-                                "Meeting created successfully.",
-
-                            meetingId:
-                                meetingId
-
-                        });
-
-                    }
-                );
-
-            }
-        );
-
-    }
-);
-
-
-/* =====================================================
-   ADMIN - EDIT MEETING
-   ===================================================== */
-
-app.put(
-    "/api/admin/meetings/:meetingId",
-    requireAdmin,
-    function (req, res) {
-
-        const meetingId =
-            Number(
-                req.params.meetingId
-            );
-
-        const title =
-            String(
-                req.body.title || ""
-            ).trim();
-
-        const meetingDate =
-            String(
-                req.body.meetingDate || ""
-            ).trim();
-
-        const description =
-            String(
-                req.body.description || ""
-            ).trim();
-
-
-        if (
-            !Number.isInteger(meetingId) ||
-            meetingId <= 0
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "Invalid meeting ID."
-
-            });
-
-        }
-
-
-        if (
-            !title ||
-            !meetingDate
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "Meeting title and date are required."
-
-            });
-
-        }
-
-
-        db.run(
-            `
-            UPDATE meetings
-            SET
-                title = ?,
-                meeting_date = ?,
-                description = ?
-            WHERE id = ?
-            `,
-
-            [
-                title,
-                meetingDate,
-                description || null,
-                meetingId
-            ],
-
-            function (error) {
-
-                if (error) {
-
-                    console.error(
-                        "Error updating meeting:",
-                        error
-                    );
-
-                    return res.status(500).json({
-
-                        message:
-                            "Unable to update meeting.",
-
-                        error:
-                            error.message
-
-                    });
-
-                }
-
-
-                if (
-                    this.changes === 0
-                ) {
-
-                    return res.status(404).json({
-
-                        message:
-                            "Meeting not found."
-
-                    });
-
-                }
-
-
-                return res.status(200).json({
-
-                    message:
-                        "Meeting updated successfully.",
-
-                    meetingId:
-                        meetingId
-
-                });
-
-            }
-        );
-
-    }
-);
-
-
-/* =====================================================
-   ADMIN - DELETE MEETING
-   ===================================================== */
-
-app.delete(
-    "/api/admin/meetings/:meetingId",
-    requireAdmin,
-    function (req, res) {
-
-        const meetingId =
-            Number(
-                req.params.meetingId
-            );
-
-
-        if (
-            !Number.isInteger(meetingId) ||
-            meetingId <= 0
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "Invalid meeting ID."
-
-            });
-
-        }
-
-
-        db.get(
-            `
-            SELECT
-                id,
-                title
-            FROM meetings
-            WHERE id = ?
-            `,
-
-            [meetingId],
-
-            function (
-                findError,
-                meeting
-            ) {
-
-                if (findError) {
-
-                    console.error(
-                        "Error finding meeting:",
-                        findError
-                    );
-
-                    return res.status(500).json({
-
-                        message:
-                            "Unable to find meeting."
-
-                    });
-
-                }
-
-
-                if (!meeting) {
-
-                    return res.status(404).json({
-
-                        message:
-                            "Meeting not found."
-
-                    });
-
-                }
-
-
-                db.run(
-                    `
-                    DELETE FROM attendance
-                    WHERE meeting_id = ?
-                    `,
-
-                    [meetingId],
-
-                    function (
-                        attendanceError
-                    ) {
-
-                        if (attendanceError) {
-
-                            console.error(
-                                "Error deleting meeting attendance:",
-                                attendanceError
-                            );
-
-                            return res.status(500).json({
-
-                                message:
-                                    "Unable to delete meeting attendance."
-
-                            });
-
-                        }
-
-
-                        db.run(
-                            `
-                            DELETE FROM meetings
-                            WHERE id = ?
-                            `,
-
-                            [meetingId],
-
-                            function (
-                                deleteError
-                            ) {
-
-                                if (deleteError) {
-
-                                    console.error(
-                                        "Error deleting meeting:",
-                                        deleteError
-                                    );
-
-                                    return res.status(500).json({
-
-                                        message:
-                                            "Unable to delete meeting."
-
-                                    });
-
-                                }
-
-
-                                return res.status(200).json({
-
-                                    message:
-                                        "Meeting deleted successfully.",
-
-                                    meetingId:
-                                        meetingId,
-
-                                    title:
-                                        meeting.title
-
-                                });
-
-                            }
-                        );
-
-                    }
-                );
-
-            }
-        );
-
-    }
-);
-
-
-/* =====================================================
-   ATTENDANCE - GET MEMBERS
-   ===================================================== */
+TEACHER COORDINATOR - ADMIN COUNT
+===================================================== */
 
 app.get(
-    "/api/admin/meetings/:meetingId/attendance",
-    requireAdmin,
-    function (req, res) {
-
-        const meetingId =
-            Number(
-                req.params.meetingId
-            );
-
-
-        if (
-            !Number.isInteger(meetingId) ||
-            meetingId <= 0
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "Invalid meeting ID."
-
-            });
-
-        }
-
-
-        db.get(
-            `
-            SELECT id
-            FROM meetings
-            WHERE id = ?
-            `,
-
-            [meetingId],
-
-            function (
-                meetingError,
-                meeting
-            ) {
-
-                if (meetingError) {
-
-                    console.error(
-                        "Meeting verification error:",
-                        meetingError
-                    );
-
-                    return res.status(500).json({
-
-                        message:
-                            "Unable to verify meeting."
-
-                    });
-
-                }
-
-
-                if (!meeting) {
-
-                    return res.status(404).json({
-
-                        message:
-                            "Meeting not found."
-
-                    });
-
-                }
-
-
-                db.all(
-                    `
-                    SELECT
-
-                        members.id,
-                        members.name,
-                        members.gr_number,
-                        members.class_name,
-
-                        COALESCE(
-                            attendance.status,
-                            'Absent'
-                        ) AS attendance_status
-
-                    FROM members
-
-                    LEFT JOIN attendance
-                        ON members.id =
-                           attendance.member_id
-
-                        AND attendance.meeting_id = ?
-
-                    WHERE members.role = 'member'
-
-                    ORDER BY members.id ASC
-                    `,
-
-                    [meetingId],
-
-                    function (
-                        error,
-                        members
-                    ) {
-
-                        if (error) {
-
-                            console.error(
-                                "Error loading attendance:",
-                                error
-                            );
-
-                            return res.status(500).json({
-
-                                message:
-                                    "Unable to load attendance."
-
-                            });
-
-                        }
-
-
-                        return res.status(200).json({
-
-                            members:
-                                members || []
-
-                        });
-
-                    }
-                );
-
-            }
-        );
-
-    }
-);
-
-
-/* =====================================================
-   ATTENDANCE - SAVE
-   ===================================================== */
-
-app.post(
-    "/api/admin/meetings/:meetingId/attendance",
-    requireAdmin,
-    function (req, res) {
-
-        const meetingId =
-            Number(
-                req.params.meetingId
-            );
-
-        const memberId =
-            Number(
-                req.body.memberId
-            );
-
-        const status =
-            String(
-                req.body.status || ""
-            );
-
-
-        if (
-            !Number.isInteger(meetingId) ||
-            meetingId <= 0
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "Invalid meeting ID."
-
-            });
-
-        }
-
-
-        if (
-            !Number.isInteger(memberId) ||
-            memberId <= 0
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "Invalid member ID."
-
-            });
-
-        }
-
-
-        if (
-            status !== "Present" &&
-            status !== "Absent"
-        ) {
-
-            return res.status(400).json({
-
-                message:
-                    "Attendance status must be Present or Absent."
-
-            });
-
-        }
-
-
-        db.run(
-            `
-            INSERT INTO attendance
-            (
-                meeting_id,
-                member_id,
-                status,
-                marked_at
-            )
-            VALUES (?, ?, ?, ?)
-
-            ON CONFLICT(
-                meeting_id,
-                member_id
-            )
-
-            DO UPDATE SET
-
-                status =
-                    excluded.status,
-
-                marked_at =
-                    excluded.marked_at
-            `,
-
-            [
-                meetingId,
-                memberId,
-                status,
-                new Date().toISOString()
-            ],
-
-            function (error) {
-
-                if (error) {
-
-                    console.error(
-                        "Error saving attendance:",
-                        error
-                    );
-
-                    return res.status(500).json({
-
-                        message:
-                            "Unable to save attendance.",
-
-                        error:
-                            error.message
-
-                    });
-
-                }
-
-
-                return res.status(200).json({
-
-                    message:
-                        "Attendance saved successfully."
-
-                });
-
-            }
-        );
-
-    }
-);
-
-
-/* =====================================================
-   ATTENDANCE COUNT
-   ===================================================== */
-
-app.get(
-    "/api/admin/attendance/count",
-    requireAdmin,
+    "/api/teacher-coordinator/admin-count",
+    requireTeacherCoordinator,
     function (req, res) {
 
         db.get(
             `
             SELECT
                 COUNT(*) AS total
-            FROM attendance
-            WHERE status = 'Present'
+            FROM members
+            WHERE role = 'admin'
             `,
 
             [],
@@ -2626,23 +2918,22 @@ app.get(
                 if (error) {
 
                     console.error(
-                        "Error loading attendance count:",
+                        "Administrator count error:",
                         error
                     );
 
                     return res.status(500).json({
 
                         message:
-                            "Unable to load attendance."
+                            "Unable to load administrator count."
 
                     });
 
                 }
 
-
                 return res.status(200).json({
 
-                    count:
+                    total:
                         result
                             ? Number(
                                 result.total || 0
@@ -2657,68 +2948,228 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   ADMIN - GET ALL PAYMENTS
-   ===================================================== */
+TEACHER COORDINATOR - REMOVE ADMINISTRATOR
 
-app.get(
-    "/api/admin/subscriptions",
-    requireAdmin,
+ONLY TEACHER COORDINATOR CAN REMOVE ADMINISTRATORS.
+===================================================== */
+
+app.delete(
+    "/api/teacher-coordinator/admins/:id",
+    requireTeacherCoordinator,
     function (req, res) {
 
-        db.all(
+        const adminId =
+            Number(
+                req.params.id
+            );
+
+        if (
+            !Number.isInteger(adminId) ||
+            adminId <= 0
+        ) {
+
+            return res.status(400).json({
+
+                message:
+                    "Invalid administrator ID."
+
+            });
+
+        }
+
+        const currentUserId =
+            Number(
+                req.managementUser.id
+            );
+
+        if (
+            adminId === currentUserId
+        ) {
+
+            return res.status(403).json({
+
+                message:
+                    "You cannot remove your own account."
+
+            });
+
+        }
+
+        db.get(
             `
             SELECT
-                subscriptions.id,
-                subscriptions.member_id,
-                members.name,
-                members.gr_number,
-                members.class_name,
-                subscriptions.amount,
-                subscriptions.payment_date,
-                subscriptions.payment_method,
-                subscriptions.status,
-                subscriptions.notes
-
-            FROM subscriptions
-
-            LEFT JOIN members
-                ON subscriptions.member_id =
-                   members.id
-
-            ORDER BY
-                subscriptions.payment_date DESC
+                id,
+                name,
+                gr_number,
+                role
+            FROM members
+            WHERE id = ?
             `,
 
-            [],
+            [adminId],
 
             function (
                 error,
-                rows
+                admin
             ) {
 
                 if (error) {
 
                     console.error(
-                        "Error loading subscriptions:",
+                        "Administrator lookup error:",
                         error
                     );
 
                     return res.status(500).json({
+
                         message:
-                            "Unable to load subscriptions."
+                            "Unable to find administrator."
+
                     });
 
                 }
 
+                if (!admin) {
 
-                return res.status(200).json({
+                    return res.status(404).json({
 
-                    subscriptions:
-                        rows || []
+                        message:
+                            "Administrator not found."
 
-                });
+                    });
+
+                }
+
+                if (
+                    admin.role !== "admin"
+                ) {
+
+                    return res.status(403).json({
+
+                        message:
+                            "The selected account is not an administrator."
+
+                    });
+
+                }
+
+                db.run(
+                    `
+                    DELETE FROM attendance
+                    WHERE member_id = ?
+                    `,
+
+                    [adminId],
+
+                    function (
+                        attendanceError
+                    ) {
+
+                        if (attendanceError) {
+
+                            console.error(
+                                "Administrator attendance removal error:",
+                                attendanceError
+                            );
+
+                            return res.status(500).json({
+
+                                message:
+                                    "Unable to remove administrator attendance records."
+
+                            });
+
+                        }
+
+                        db.run(
+                            `
+                            DELETE FROM subscriptions
+                            WHERE member_id = ?
+                            `,
+
+                            [adminId],
+
+                            function (
+                                paymentError
+                            ) {
+
+                                if (paymentError) {
+
+                                    console.error(
+                                        "Administrator payment removal error:",
+                                        paymentError
+                                    );
+
+                                    return res.status(500).json({
+
+                                        message:
+                                            "Unable to remove administrator payment records."
+
+                                    });
+
+                                }
+
+                                db.run(
+                                    `
+                                    DELETE FROM members
+                                    WHERE id = ?
+                                    AND role = 'admin'
+                                    `,
+
+                                    [adminId],
+
+                                    function (
+                                        deleteError
+                                    ) {
+
+                                        if (deleteError) {
+
+                                            console.error(
+                                                "Administrator removal error:",
+                                                deleteError
+                                            );
+
+                                            return res.status(500).json({
+
+                                                message:
+                                                    "Unable to remove administrator."
+
+                                            });
+
+                                        }
+
+                                        if (
+                                            this.changes === 0
+                                        ) {
+
+                                            return res.status(404).json({
+
+                                                message:
+                                                    "Administrator was not removed."
+
+                                            });
+
+                                        }
+
+                                        return res.status(200).json({
+
+                                            message:
+                                                "Administrator removed successfully.",
+
+                                            adminId:
+                                                adminId
+
+                                        });
+
+                                    }
+                                );
+
+                            }
+                        );
+
+                    }
+                );
 
             }
         );
@@ -2727,59 +3178,111 @@ app.get(
 );
 
 /* =====================================================
-   ADMIN - PROMOTE MEMBERS TO ADMIN
-   ===================================================== */
+TEACHER COORDINATOR - PROMOTE MEMBERS TO ADMIN
+
+ONLY TEACHER COORDINATOR CAN PROMOTE.
+===================================================== */
 
 app.post(
     "/api/admin/promote-members",
-    requireAdmin,
+    requireTeacherCoordinator,
     function (req, res) {
 
-        const grNumbers = Array.isArray(req.body.grNumbers)
-            ? req.body.grNumbers
-            : [];
+        const grNumbers =
+            Array.isArray(
+                req.body.grNumbers
+            )
+                ? req.body.grNumbers
+                    .map(
+                        function (grNumber) {
 
-        if (grNumbers.length === 0) {
+                            return String(
+                                grNumber || ""
+                            )
+                                .trim()
+                                .toUpperCase();
+
+                        }
+                    )
+                    .filter(
+                        function (grNumber) {
+
+                            return (
+                                grNumber.length > 0
+                            );
+
+                        }
+                    )
+                : [];
+
+        if (
+            grNumbers.length === 0
+        ) {
+
             return res.status(400).json({
-                message: "No members selected."
+
+                message:
+                    "No members selected."
+
             });
+
         }
 
-        const cleanGRNumbers = grNumbers
-            .map(function (gr) {
-                return String(gr).trim().toUpperCase();
-            })
-            .filter(Boolean);
+        const uniqueGrNumbers =
+            [
+                ...new Set(
+                    grNumbers
+                )
+            ];
 
-        const placeholders = cleanGRNumbers
-            .map(function () {
-                return "?";
-            })
-            .join(",");
+        const placeholders =
+            uniqueGrNumbers
+                .map(
+                    function () {
+
+                        return "?";
+
+                    }
+                )
+                .join(",");
 
         db.run(
             `
             UPDATE members
             SET role = 'admin'
-            WHERE gr_number IN (${placeholders})
+            WHERE
+                gr_number IN (${placeholders})
+                AND role = 'member'
             `,
-            cleanGRNumbers,
+
+            uniqueGrNumbers,
+
             function (error) {
 
                 if (error) {
+
                     console.error(
-                        "Promote members error:",
+                        "Member promotion error:",
                         error
                     );
 
                     return res.status(500).json({
-                        message: "Unable to promote members."
+
+                        message:
+                            "Unable to promote members."
+
                     });
+
                 }
 
                 return res.status(200).json({
-                    message: "Members promoted successfully.",
-                    updated: this.changes
+
+                    message:
+                        "Selected members promoted to administrator successfully.",
+
+                    promotedCount:
+                        this.changes
+
                 });
 
             }
@@ -2789,8 +3292,8 @@ app.post(
 );
 
 /* =====================================================
-   ADMIN - GET PAYMENT MEMBERS
-   ===================================================== */
+ADMIN - GET PAYMENT MEMBERS
+===================================================== */
 
 app.get(
     "/api/admin/payment-members",
@@ -2805,7 +3308,7 @@ app.get(
                 gr_number,
                 class_name
             FROM members
-            WHERE role = 'member'
+            WHERE role IN ('member', 'admin')
             ORDER BY name ASC
             `,
 
@@ -2832,7 +3335,6 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
 
                     members:
@@ -2846,10 +3348,9 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   ADMIN - SAVE PAYMENT
-   ===================================================== */
+ADMIN - SAVE PAYMENT
+===================================================== */
 
 app.post(
     "/api/admin/subscriptions",
@@ -2888,7 +3389,6 @@ app.post(
                 ).trim()
                 : null;
 
-
         if (
             !Number.isInteger(memberId) ||
             memberId <= 0
@@ -2902,7 +3402,6 @@ app.post(
             });
 
         }
-
 
         if (
             !Number.isFinite(amount) ||
@@ -2918,7 +3417,6 @@ app.post(
 
         }
 
-
         if (!paymentDate) {
 
             return res.status(400).json({
@@ -2929,7 +3427,6 @@ app.post(
             });
 
         }
-
 
         if (
             status !== "Paid" &&
@@ -2946,58 +3443,116 @@ app.post(
 
         }
 
-
-        db.run(
+        db.get(
             `
-            INSERT INTO subscriptions
-            (
-                member_id,
-                amount,
-                payment_date,
-                payment_method,
-                status,
-                notes
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
+            SELECT
+                id,
+                role
+            FROM members
+            WHERE id = ?
             `,
 
-            [
-                memberId,
-                amount,
-                paymentDate,
-                paymentMethod || "Cash",
-                status,
-                notes || null
-            ],
+            [memberId],
 
-            function (error) {
+            function (
+                memberError,
+                member
+            ) {
 
-                if (error) {
+                if (memberError) {
 
                     console.error(
-                        "Error saving payment:",
-                        error
+                        "Payment member lookup error:",
+                        memberError
                     );
 
                     return res.status(500).json({
 
                         message:
-                            "Unable to save payment."
+                            "Unable to find payment member."
 
                     });
 
                 }
 
+                if (!member) {
 
-                return res.status(201).json({
+                    return res.status(404).json({
 
-                    message:
-                        "Payment saved successfully.",
+                        message:
+                            "Member not found."
 
-                    paymentId:
-                        this.lastID
+                    });
 
-                });
+                }
+
+                if (
+                    member.role !== "member"
+                ) {
+
+                    return res.status(400).json({
+
+                        message:
+                            "Payments can only be recorded for regular club members."
+
+                    });
+
+                }
+
+                db.run(
+                    `
+                    INSERT INTO subscriptions
+                    (
+                        member_id,
+                        amount,
+                        payment_date,
+                        payment_method,
+                        status,
+                        notes
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    RETURNING id
+                    `,
+
+                    [
+                        memberId,
+                        amount,
+                        paymentDate,
+                        paymentMethod || "Cash",
+                        status,
+                        notes || null
+                    ],
+
+                    function (error) {
+
+                        if (error) {
+
+                            console.error(
+                                "Error saving payment:",
+                                error
+                            );
+
+                            return res.status(500).json({
+
+                                message:
+                                    "Unable to save payment."
+
+                            });
+
+                        }
+
+                        return res.status(201).json({
+
+                            message:
+                                "Payment saved successfully.",
+
+                            paymentId:
+                                this.lastID
+
+                        });
+
+                    }
+                );
 
             }
         );
@@ -3005,13 +3560,12 @@ app.post(
     }
 );
 
-
 /* =====================================================
-   ADMIN - GET ALL PAYMENTS
-   ===================================================== */
+ADMIN - GET ALL PAYMENTS
+===================================================== */
 
 app.get(
-    "/api/admin/subscriptions",
+    "/api/admin/subscriptions/all",
     requireAdmin,
     function (req, res) {
 
@@ -3065,7 +3619,6 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
 
                     subscriptions:
@@ -3079,10 +3632,9 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   ADMIN - PAYMENT TOTAL
-   ===================================================== */
+ADMIN - PAYMENT TOTAL
+===================================================== */
 
 app.get(
     "/api/admin/subscriptions/total",
@@ -3123,7 +3675,6 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
 
                     total:
@@ -3141,10 +3692,9 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   MEMBER - GET OWN PROFILE
-   ===================================================== */
+MEMBER - GET OWN PROFILE
+===================================================== */
 
 app.get(
     "/api/member/profile/:grNumber",
@@ -3157,7 +3707,6 @@ app.get(
                 .trim()
                 .toUpperCase();
 
-
         if (!grNumber) {
 
             return res.status(400).json({
@@ -3168,7 +3717,6 @@ app.get(
             });
 
         }
-
 
         db.get(
             `
@@ -3210,7 +3758,6 @@ app.get(
 
                 }
 
-
                 if (!member) {
 
                     return res.status(404).json({
@@ -3221,7 +3768,6 @@ app.get(
                     });
 
                 }
-
 
                 return res.status(200).json({
 
@@ -3237,8 +3783,8 @@ app.get(
 );
 
 /* =====================================================
-   MEMBER - UPDATE OWN PROFILE
-   ===================================================== */
+MEMBER - UPDATE OWN PROFILE
+===================================================== */
 
 app.put(
     "/api/member/profile/:grNumber",
@@ -3261,7 +3807,6 @@ app.put(
                 req.body.email || ""
             ).trim();
 
-
         if (!grNumber) {
 
             return res.status(400).json({
@@ -3272,7 +3817,6 @@ app.put(
             });
 
         }
-
 
         db.get(
             `
@@ -3307,7 +3851,6 @@ app.put(
 
                 }
 
-
                 if (!member) {
 
                     return res.status(404).json({
@@ -3318,7 +3861,6 @@ app.put(
                     });
 
                 }
-
 
                 db.run(
                     `
@@ -3352,7 +3894,6 @@ app.put(
                             });
 
                         }
-
 
                         db.get(
                             `
@@ -3394,7 +3935,6 @@ app.put(
 
                                 }
 
-
                                 return res.status(200).json({
 
                                     message:
@@ -3418,8 +3958,8 @@ app.put(
 );
 
 /* =====================================================
-   MEMBER - OWN ATTENDANCE
-   ===================================================== */
+MEMBER - OWN ATTENDANCE
+===================================================== */
 
 app.get(
     "/api/member/attendance/:memberId",
@@ -3429,7 +3969,6 @@ app.get(
             Number(
                 req.params.memberId
             );
-
 
         if (
             !Number.isInteger(memberId) ||
@@ -3444,7 +3983,6 @@ app.get(
             });
 
         }
-
 
         db.all(
             `
@@ -3489,7 +4027,6 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
 
                     attendance:
@@ -3503,10 +4040,9 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   MEMBER - OWN PAYMENTS
-   ===================================================== */
+MEMBER - OWN PAYMENTS
+===================================================== */
 
 app.get(
     "/api/member/payments/:memberId",
@@ -3516,7 +4052,6 @@ app.get(
             Number(
                 req.params.memberId
             );
-
 
         if (
             !Number.isInteger(memberId) ||
@@ -3531,7 +4066,6 @@ app.get(
             });
 
         }
-
 
         db.all(
             `
@@ -3573,7 +4107,6 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
 
                     payments:
@@ -3587,10 +4120,9 @@ app.get(
     }
 );
 
-
 /* =====================================================
-   MEMBER - CHANGE PASSWORD
-   ===================================================== */
+MEMBER - CHANGE PASSWORD
+===================================================== */
 
 app.post(
     "/api/member/change-password",
@@ -3613,7 +4145,6 @@ app.post(
                     req.body.newPassword || ""
                 );
 
-
             if (
                 !Number.isInteger(memberId) ||
                 memberId <= 0
@@ -3628,7 +4159,6 @@ app.post(
 
             }
 
-
             if (!currentPassword) {
 
                 return res.status(400).json({
@@ -3640,7 +4170,6 @@ app.post(
 
             }
 
-
             if (!newPassword) {
 
                 return res.status(400).json({
@@ -3651,7 +4180,6 @@ app.post(
                 });
 
             }
-
 
             if (
                 newPassword.length < 6
@@ -3666,7 +4194,6 @@ app.post(
 
             }
 
-
             if (
                 currentPassword === newPassword
             ) {
@@ -3679,7 +4206,6 @@ app.post(
                 });
 
             }
-
 
             db.get(
                 `
@@ -3713,7 +4239,6 @@ app.post(
 
                     }
 
-
                     if (!member) {
 
                         return res.status(404).json({
@@ -3725,7 +4250,6 @@ app.post(
 
                     }
 
-
                     try {
 
                         const passwordCorrect =
@@ -3733,7 +4257,6 @@ app.post(
                                 currentPassword,
                                 member.password
                             );
-
 
                         if (!passwordCorrect) {
 
@@ -3746,13 +4269,11 @@ app.post(
 
                         }
 
-
                         const hashedPassword =
                             await bcrypt.hash(
                                 newPassword,
                                 10
                             );
-
 
                         db.run(
                             `
@@ -3786,7 +4307,6 @@ app.post(
 
                                 }
 
-
                                 return res.status(200).json({
 
                                     message:
@@ -3798,7 +4318,6 @@ app.post(
                         );
 
                     }
-
                     catch (passwordError) {
 
                         console.error(
@@ -3819,7 +4338,6 @@ app.post(
             );
 
         }
-
         catch (error) {
 
             console.error(
@@ -3839,10 +4357,9 @@ app.post(
     }
 );
 
-
 /* =====================================================
-   MEMBER - UPDATE PROFILE PICTURE
-   ===================================================== */
+MEMBER - UPDATE PROFILE PICTURE
+===================================================== */
 
 app.post(
     "/api/member/profile-picture",
@@ -3860,7 +4377,6 @@ app.post(
                     req.body.image || ""
                 );
 
-
             if (
                 !Number.isInteger(memberId) ||
                 memberId <= 0
@@ -3875,7 +4391,6 @@ app.post(
 
             }
 
-
             if (!image) {
 
                 return res.status(400).json({
@@ -3886,7 +4401,6 @@ app.post(
                 });
 
             }
-
 
             if (
                 !image.startsWith(
@@ -3903,7 +4417,6 @@ app.post(
 
             }
 
-
             if (
                 image.length >
                 5 * 1024 * 1024
@@ -3918,12 +4431,10 @@ app.post(
 
             }
 
-
             const match =
                 image.match(
                     /^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/
                 );
-
 
             if (!match) {
 
@@ -3936,23 +4447,19 @@ app.post(
 
             }
 
-
             const extension =
                 match[1] === "jpeg"
                     ? "jpg"
                     : match[1];
 
-
             const imageData =
                 match[2];
-
 
             const buffer =
                 Buffer.from(
                     imageData,
                     "base64"
                 );
-
 
             const filename =
                 "member-" +
@@ -3962,24 +4469,20 @@ app.post(
                 "." +
                 extension;
 
-
             const filePath =
                 path.join(
                     profilePicturesPath,
                     filename
                 );
 
-
             fs.writeFileSync(
                 filePath,
                 buffer
             );
 
-
             const picturePath =
                 "/profile-pictures/" +
                 filename;
-
 
             db.run(
                 `
@@ -4011,7 +4514,6 @@ app.post(
 
                     }
 
-
                     if (
                         this.changes === 0
                     ) {
@@ -4024,7 +4526,6 @@ app.post(
                         });
 
                     }
-
 
                     return res.status(200).json({
 
@@ -4040,7 +4541,6 @@ app.post(
             );
 
         }
-
         catch (error) {
 
             console.error(
@@ -4060,10 +4560,9 @@ app.post(
     }
 );
 
-
 /* =====================================================
-   MEMBER - GET NOTIFICATIONS
-   ===================================================== */
+MEMBER - GET NOTIFICATIONS
+===================================================== */
 
 app.get(
     "/api/member/notifications",
@@ -4107,7 +4606,6 @@ app.get(
 
                 }
 
-
                 return res.status(200).json({
 
                     notifications:
@@ -4122,16 +4620,16 @@ app.get(
 );
 
 /* =====================================================
-   SITEMAP
-   ===================================================== */
+SITEMAP
+===================================================== */
 
 app.get(
     "/sitemap.xml",
     function (req, res) {
 
-        res.sendFile(
+        return res.sendFile(
             path.join(
-                __dirname,
+                frontendPath,
                 "sitemap.xml"
             )
         );
@@ -4139,10 +4637,27 @@ app.get(
     }
 );
 
+/* =====================================================
+404 API HANDLER
+===================================================== */
+
+app.use(
+    "/api",
+    function (req, res) {
+
+        return res.status(404).json({
+
+            message:
+                "API endpoint not found."
+
+        });
+
+    }
+);
 
 /* =====================================================
-   START SERVER
-   ===================================================== */
+START SERVER
+===================================================== */
 
 app.listen(
     PORT,
@@ -4158,3 +4673,4 @@ app.listen(
 
     }
 );
+
